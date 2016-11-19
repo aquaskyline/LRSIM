@@ -1,0 +1,1567 @@
+=head1 NAME
+
+Inline::C-Cookbook - A Cornucopia of Inline C Recipes
+
+=cut --------------------------------------------------------------------------
+
+=head1 DESCRIPTION
+
+It's a lot easier for most of us to cook a meal from a recipe, rather
+than just throwing things into a pot until something edible forms. So it
+is with programming as well. C<Inline.pm> makes C programming for Perl
+as easy as possible. Having a set of easy to understand samples, makes
+it simpler yet.
+
+This Cookbook is intended to be an evergrowing repository of small yet
+complete coding examples; each showing how to accomplish a particular
+task with Inline. Each example is followed by a short discussion,
+explaining in detail the particular features that are being
+demonstrated.
+
+Many of these recipes are apdapted from email discussions I have had
+with Inline users around the world. It has been my experience so far,
+that Inline provides an elegant solution to almost all problems
+involving Perl and C.
+
+Bon Appetit!
+
+=cut --------------------------------------------------------------------------
+
+=head1 Appetizers
+
+=cut --------------------------------------------------------------------------
+
+=head2 Hello, world
+
+=over 4
+
+=item Problem
+
+It seems that the first thing any programmer wants to do when he learns
+a new programming technique is to use it to greet the Earth. How can I
+do this using Inline?
+
+=item Solution
+
+    use Inline C => <<'END_C';
+
+    void greet() {
+        printf("Hello, world\n");
+    }
+    END_C
+
+    greet;
+
+=item Discussion
+
+Nothing too fancy here. We define a single C function C<greet()> which
+prints a message to STDOUT. One thing to note is that since the Inline
+code comes before the function call to C<greet>, we can call it as a
+bareword (no parentheses).
+
+=item See Also
+
+See L<Inline> and L<Inline::C> for basic info about C<Inline.pm>.
+
+=item Credits
+
+Brian Kernigan
+
+Dennis Ritchie
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 One Liner
+
+=over 4
+
+=item Problem
+
+A concept is valid in Perl only if it can be shown to work in one line.
+Can Inline reduce the complexities of Perl/C interaction to a one-liner?
+
+=item Solution
+
+    perl -e 'use Inline C=>q{void greet(){printf("Hello, world\n");}};greet'
+
+=item Discussion
+
+Try doing that in XS :-)
+
+=item See Also
+
+My email signature of late is:
+
+    perl -le 'use Inline C=>q{SV*JAxH(char*x){return newSVpvf("Just Another %s Hacker",x);}};print JAxH+Perl'
+
+A bit fancier but a few bytes too long to qualify as a true one liner :-(
+
+=item Credits
+
+"Eli the Bearded" <elijah@workspot.net> gave me the idea that I should
+have an Inline one-liner as a signature.
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head1 Meat & Potatoes
+
+=cut --------------------------------------------------------------------------
+
+=head2 Data Types
+
+=over 4
+
+=item Problem
+
+How do I pass different types of data to and from Inline C functions;
+like strings, numbers and integers?
+
+=item Solution
+
+    # vowels.pl
+    use Inline C;
+
+    $filename = $ARGV[0];
+    die "Usage: perl vowels.pl filename\n" unless -f $filename;
+
+    $text = join '', <>;           # slurp input file
+    $vp = vowel_scan($text);       # call our function
+    $vp = sprintf("%03.1f", $vp * 100);  # format for printing
+    print "The letters in $filename are $vp% vowels.\n";
+
+    __END__
+    __C__
+
+    /* Find percentage of vowels to letters */
+    double vowel_scan(char* str) {
+        int letters = 0;
+        int vowels = 0;
+        int i = 0;
+        char c;
+        char normalize = 'a' ^ 'A';
+        /* normalize forces lower case in ASCII; upper in EBCDIC */
+        char A = normalize | 'a';
+        char E = normalize | 'e';
+        char I = normalize | 'i';
+        char O = normalize | 'o';
+        char U = normalize | 'u';
+        char Z = normalize | 'z';
+
+        while(c = str[i++]) {
+            c |= normalize;
+            if (c >= A && c <= Z) {
+                 letters++;
+                 if (c == A || c == E || c == I || c == O || c == U)
+                     vowels++;
+            }
+        }
+
+        return letters ? ((double) vowels / letters) : 0.0;
+    }
+
+=item Discussion
+
+This script takes a file name from the command line and prints the ratio
+of vowels to letters in that file. C<vowels.pl> uses an Inline C
+function called C<vowel_scan>, that takes a string argument, and returns
+the percentage of vowels as a floating point number between 0 and 1. It
+handles upper and lower case letters, and works with ASCII and EBCDIC.
+It is also quite fast.
+
+Running this script produces:
+
+    > perl vowels.pl /usr/dict/words
+    The letters in /usr/dict/words are 37.5% vowels.
+
+=item See Also
+
+The Perl Journal vol #19 has an article about Inline which uses this example.
+
+=item Credits
+
+This example was reprinted by permission of The Perl Journal. It was
+edited to work with Inline v0.30 and higher.
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Variable Argument Lists
+
+=over 4
+
+=item Problem
+
+How do I pass a variable-sized list of arguments to an Inline C function?
+
+=item Solution
+
+    greet(qw(Sarathy Jan Sparky Murray Mike));
+
+    use Inline C => <<'END_OF_C_CODE';
+
+    void greet(SV* name1, ...) {
+        Inline_Stack_Vars;
+        int i;
+
+        for (i = 0; i < Inline_Stack_Items; i++)
+            printf("Hello %s!\n", SvPV(Inline_Stack_Item(i), PL_na));
+
+        Inline_Stack_Void;
+    }
+
+    END_OF_C_CODE
+
+
+=item Discussion
+
+This little program greets a group of people, such as my
+coworkers. We use the C<C> ellipsis syntax: "C<...>", since the
+list can be of any size.
+
+Since there are no types or names associated with each argument, we
+can't expect XS to handle the conversions for us. We'll need to pop them
+off the B<Stack> ourselves. Luckily there are two functions (macros)
+that make this a very easy task.
+
+First, we need to begin our function with a "C<Inline_Stack_Vars>"
+statement. This defines a few internal variables that we need to access
+the B<Stack>. Now we can use "C<Inline_Stack_Items>", which returns an
+integer containing the number of arguments passed to us from Perl.
+
+B<NOTE:> It is important to I<only> use "C<Inline_Stack_>" macros when
+there is an ellipsis (C<...>) in the argument list, I<or> the function
+has a return type of void.
+
+Second, we use the C<Inline_Stack_Item(x)> function to access each
+argument where "0 <= x < items".
+
+B<NOTE:> When using a variable length argument list, you have to
+specify at least one argument before the ellipsis. (On my compiler,
+anyway.) When XS does it's argument checking, it will complain if you
+pass in less than the number of I<defined> arguments. Therefore, there
+is currently no way to pass an empty list when a variable length list
+is expected.
+
+=item See Also
+
+=item Credits
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Multiple Return Values
+
+=over 4
+
+=item Problem
+
+How do I return a list of values from a C function?
+
+=item Solution
+
+    print map {"$_\n"} get_localtime(time);
+
+    use Inline C => <<'END_OF_C_CODE';
+
+    #include <time.h>
+
+    void get_localtime(int utc) {
+      struct tm *ltime = localtime(&utc);
+      Inline_Stack_Vars;
+
+      Inline_Stack_Reset;
+      Inline_Stack_Push(sv_2mortal(newSViv(ltime->tm_year)));
+      Inline_Stack_Push(sv_2mortal(newSViv(ltime->tm_mon)));
+      Inline_Stack_Push(sv_2mortal(newSViv(ltime->tm_mday)));
+      Inline_Stack_Push(sv_2mortal(newSViv(ltime->tm_hour)));
+      Inline_Stack_Push(sv_2mortal(newSViv(ltime->tm_min)));
+      Inline_Stack_Push(sv_2mortal(newSViv(ltime->tm_sec)));
+      Inline_Stack_Push(sv_2mortal(newSViv(ltime->tm_isdst)));
+      Inline_Stack_Done;
+    }
+    END_OF_C_CODE
+
+=item Discussion
+
+Perl is a language where it is common to return a list of values
+from a subroutine call instead of just a single value. C is not such
+a language. In order to accomplish this in C we need to manipulate
+the Perl call stack by hand. Luckily, Inline provides macros to make
+this easy.
+
+This example calls the system C<localtime>, and returns each of the
+parts of the time struct; much like the perl builtin C<localtime()>. On
+each stack push, we are creating a new Perl integer (SVIV) and
+mortalizing it. The sv_2mortal() call makes sure that the reference
+count is set properly. Without it, the program would leak memory.
+
+NOTE:
+The C<#include> statement is not really needed, because Inline
+automatically includes the Perl headers which include almost all
+standard system calls.
+
+=item See Also
+
+For more information on the Inline stack macros, see L<Inline::C>.
+
+=item Credits
+
+Richard Anderson <starfire@zipcon.net> contributed the original idea for
+this snippet.
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Multiple Return Values (Another Way)
+
+=over 4
+
+=item Problem
+
+How can I pass back more than one value without using the Perl Stack?
+
+=item Solution
+
+    use Inline::Files;
+    use Inline C;
+
+    my ($foo, $bar);
+    change($foo, $bar);
+
+    print "\$foo = $foo\n";
+    print "\$bar = $bar\n";
+
+    __C__
+
+    int change(SV* var1, SV* var2) {
+        sv_setpvn(var1, "Perl Rocks!", 11);
+        sv_setpvn(var2, "Inline Rules!", 13);
+        return 1;
+    }
+
+=item Discussion
+
+Most perl function interfaces return values as a list of one or more
+scalars. Very few like C<chomp>, will modify an input scalar in place.
+On the other hand, in C you do this quite often. Values are passed in by
+reference and modified in place by the called function.
+
+It turns out that we can do that with Inline as well. The secret is to
+use a type of 'C<SV*>' for each argument that is to be modified. This
+ensures passing by reference, because no typemapping is needed.
+
+The function can then use the Perl5 API to operate on that argument.
+When control returns to Perl, the argument will retain the value set by
+the C function. In this example we passed in 2 empty scalars and
+assigned values directly to them.
+
+=item See Also
+
+=item Credits
+
+Ned Konz <ned@bike-nomad.com> brought this behavior to my attention. He
+also pointed out that he is not the world famous computer cyclist Steve
+Roberts (http://www.microship.com), but he is close
+(http://bike-nomad.com). Thanks Ned.
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Using Memory
+
+=over 4
+
+=item Problem
+
+How should I allocate buffers in my Inline C code?
+
+=item Solution
+
+    print greeting('Ingy');
+
+    use Inline C => <<'END_OF_C_CODE';
+
+    SV* greeting(SV* sv_name) {
+        return (newSVpvf("Hello %s!\n", SvPV(sv_name, PL_na)));
+    }
+
+    END_OF_C_CODE
+
+=item Discussion
+
+In this example we will return the greeting to the caller, rather than
+printing it. This would seem mighty easy, except for the fact that we
+need to allocate a small buffer to create the greeting.
+
+I would urge you to stay away from C<malloc>ing your own buffer. Just
+use Perl's built in memory management. In other words, just create a new
+Perl string scalar. The function C<newSVpv> does just that. And
+C<newSVpvf> includes C<sprintf> functionality.
+
+The other problem is getting rid of this new scalar. How will the ref
+count get decremented after we pass the scalar back? Perl also provides
+a function called C<sv_2mortal>. Mortal variables die when the context
+goes out of scope. In other words, Perl will wait until the new scalar
+gets passed back and then decrement the ref count for you, thereby
+making it eligible for garbage collection. See C<perldoc perlguts>.
+
+In this example the C<sv_2mortal> call gets done under the hood by XS,
+because we declared the return type to be C<SV*>.
+
+To view the generated XS code, run the command "C<perl
+-MInline=INFO,FORCE,NOCLEAN example004.pl>". This will leave the build
+directory intact and tell you where to find it.
+
+=item See Also
+
+=item Credits
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head1 Fast Food
+
+=cut --------------------------------------------------------------------------
+
+=head2 Inline CGI
+
+=over 4
+
+=item Problem
+
+How do I use Inline securely in a CGI environment?
+
+=item Solution
+
+    #!/usr/bin/perl
+
+    use CGI qw(:standard);
+    use Inline (Config =>
+                DIRECTORY => '/usr/local/apache/Inline',
+               );
+
+    print (header,
+           start_html('Inline CGI Example'),
+           h1(JAxH('Inline')),
+           end_html
+          );
+
+    use Inline C => <<END;
+    SV* JAxH(char* x) {
+        return newSVpvf("Just Another %s Hacker", x);
+    }
+    END
+
+=item Discussion
+
+The problem with running Inline code from a CGI script is that Inline
+B<writes> to a build area on your disk whenever it compiles code. Most
+CGI scripts don't (and shouldn't) be able to create a directory and
+write into it.
+
+The solution is to explicitly tell Inline which directory to use with
+the 'use Inline Config => DIRECTORY => ...' line. Then you need to give
+write access to that directory from the web server (CGI script).
+
+If you see this as a security hole, then there is another option.
+Give write access to yourself, but read-only access to the CGI
+script. Then run the script once by hand (from the command line).
+This will cause Inline to precompile the C code. That way the CGI
+will only need read access to the build directory (to load in the
+shared library from there).
+
+Just remember that whenever you change the C code, you need to
+precompile it again.
+
+=item See Also
+
+See L<CGI> for more information on using the C<CGI.pm> module.
+
+=item Credits
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 mod_perl
+
+=over 4
+
+=item Problem
+
+How do I use Inline with mod_perl?
+
+=item Solution
+
+    package Factorial;
+    use strict;
+    use Inline Config =>
+               DIRECTORY => '/usr/local/apache/Inline',
+               ENABLE => 'UNTAINT';
+    use Inline 'C';
+    Inline->init;
+
+    sub handler {
+        my $r = shift;
+        $r->send_http_header('text/plain');
+        printf "%3d! = %10d\n", $_, factorial($_) for 1..100;
+        return Apache::Constants::OK;
+    }
+
+    1;
+    __DATA__
+    __C__
+    double factorial(double x) {
+        if (x < 2)  return 1;
+        return x * factorial(x - 1)
+    }
+
+=item Discussion
+
+This is a fully functional mod_perl handler that prints out the
+factorial values for the numbers 1 to 100. Since we are using Inline
+under mod_perl, there are a few considerations to , um, consider.
+
+First, mod_perl handlers are usually run with C<-T> taint detection.
+Therefore, we need to enable the UNTAINT option. The next thing to deal
+with is the fact that this handler will most likely be loaded after
+Perl's compile time. Since we are using the DATA section, we need to
+use the special C<init()> call. And of course we need to specify a
+DIRECTORY that mod_perl can compile into. I<See the above CGI example
+for more info.>
+
+Other than that, this is a pretty straightforward mod_perl handler,
+tuned for even more speed!
+
+=item See Also
+
+See Stas Bekman's upcoming O'Reilly book on mod_perl to which this
+example was contributed.
+
+=item Credits
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Object Oriented Inline
+
+=over 4
+
+=item Problem
+
+How do I implement Object Oriented programming in Perl using C objects?
+
+=item Solution
+
+    my $obj1 = Soldier->new('Benjamin', 'Private', 11111);
+    my $obj2 = Soldier->new('Sanders', 'Colonel', 22222);
+    my $obj3 = Soldier->new('Matt', 'Sergeant', 33333);
+
+    for my $obj ($obj1, $obj2, $obj3) {
+        print  $obj->get_serial, ") ",
+               $obj->get_name, " is a ",
+               $obj->get_rank, "\n";
+    }
+
+    #---------------------------------------------------------
+
+    package Soldier;
+
+    use Inline C => <<'END';
+
+    typedef struct {
+      char* name;
+      char* rank;
+      long  serial;
+      } Soldier;
+
+
+
+    SV* new(char* class, char* name, char* rank, long serial) {
+        Soldier* soldier;
+        SV*      obj_ref = newSViv(0);
+        SV*      obj = newSVrv(obj_ref, class);
+
+        New(42, soldier, 1, Soldier);
+
+        soldier->name = savepv(name);
+        soldier->rank = savepv(rank);
+        soldier->serial = serial;
+
+        sv_setiv(obj, (IV)soldier);
+        SvREADONLY_on(obj);
+        return obj_ref;
+     }
+
+     char* get_name(SV* obj) {
+           return ((Soldier*)SvIV(SvRV(obj)))->name;
+     }
+
+     char* get_rank(SV* obj) {
+           return ((Soldier*)SvIV(SvRV(obj)))->rank;
+     }
+
+     long get_serial(SV* obj) {
+          return ((Soldier*)SvIV(SvRV(obj)))->serial;
+     }
+
+     void DESTROY(SV* obj) {
+          Soldier* soldier = (Soldier*)SvIV(SvRV(obj));
+          Safefree(soldier->name);
+          Safefree(soldier->rank);
+          Safefree(soldier);
+    }
+
+    END
+
+=item Discussion
+
+Damian Conway has given us myriad ways of implementing OOP in Perl. This
+is one he might not have thought of.
+
+The interesting thing about this example is that it uses Perl for all
+the OO bindings while using C for the attributes and methods.
+
+If you examine the Perl code everything looks exactly like a regular OO
+example. There is a C<new> method and several accessor methods. The
+familiar 'arrow syntax' is used to invoke them.
+
+In the class definition (second part) the Perl C<package> statement is
+used to name the object class or namespace. But that's where the
+similarities end Inline takes over.
+
+The idea is that we call a C subroutine called C<new()> which returns a
+blessed scalar. The scalar contains a readonly integer which is a C
+pointer to a Soldier struct. This is our object.
+
+The C<new()> function needs to malloc the memory for the struct and then
+copy the initial values into it using C<savepv()>. This also allocates
+more memory (which we have to keep track of).
+
+Note that C<newSVrv()> doesn't create a reference, but returns a new SV
+('obj') and makes 'obj_ref' a reference to it. Ultimately, 'obj_ref'
+(which is the SV that C<new()> returns) holds a reference to the blessed
+scalar in 'obj', which in turn contains an integer that corresponds to
+the memory address of the C object.
+
+The accessor methods are pretty straightforward. They return the current
+value of their attribute.
+
+The last method C<DESTROY()> is called automatically by Perl whenever an
+object goes out of scope. This is where we can free all the memory used
+by the object.
+
+That's it. It's a very simplistic example. It doesn't show off any
+advanced OO features, but it is pretty cool to see how easy the
+implementation can be. The important Perl call is C<newSVrv()> which
+creates a blessed scalar.
+
+=item See Also
+
+Read "Object Oriented Perl" by Damian Conway, for more useful ways of
+doing OOP in Perl.
+
+You can learn more Perl calls in L<perlapi>. If you don't have Perl
+5.6.0 or higher, visit http://www.perldoc.com/perl5.6/pod/perlapi.html
+
+=item Credits
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head1 The Main Course
+
+=cut --------------------------------------------------------------------------
+
+=head2 Exposing Shared Libraries
+
+=over 4
+
+=item Problem
+
+You have this great C library and you want to be able to access parts of
+it with Perl.
+
+=item Solution
+
+    print get('http://www.axkit.org');
+
+    use Inline C => Config =>
+               LIBS => '-lghttp';
+    use Inline C => <<'END_OF_C_CODE';
+
+    #include <ghttp.h>
+
+    char *get(SV* uri) {
+       SV* buffer;
+       ghttp_request* request;
+
+       buffer = NEWSV(0,0);
+       request = ghttp_request_new();
+       ghttp_set_uri(request, SvPV(uri, PL_na));
+
+       ghttp_set_header(request, http_hdr_Connection, "close");
+
+       ghttp_prepare(request);
+       ghttp_process(request);
+
+       sv_catpv(buffer, ghttp_get_body(request));
+
+       ghttp_request_destroy(request);
+
+       return SvPV(buffer, PL_na);
+    }
+
+    END_OF_C_CODE
+
+=item Discussion
+
+This example fetches and prints the HTML from http://www.axkit.org
+It requires the GNOME http libraries. http://www.gnome.org
+
+One of the most common questions I get is "How can I use Inline to make
+use of some shared library?". Although it has always been possible to do
+so, the configuration was ugly, and there were no specific examples.
+
+With version 0.30 and higher, you can specify the use of shared
+libraries easily with something like this:
+
+    use Inline C => Config => LIBS => '-lghttp';
+    use Inline C => "code ...";
+
+or
+
+    use Inline C => "code ...", LIBS => '-lghttp';
+
+To specify a specific library path, use:
+
+    use Inline C => "code ...", LIBS => '-L/your/lib/path -lyourlib';
+
+To specify an include path use:
+
+    use Inline C => "code ...",
+               LIBS => '-lghttp',
+               INC => '-I/your/inc/path';
+
+=item See Also
+
+The C<LIBS> and C<INC> configuration options are formatted and passed
+into MakeMaker. For more info see L<ExtUtils::MakeMaker>. For more
+options see L<Inline::C>.
+
+=item Credits
+
+This code was written by Matt Sergeant <matt@sergeant.org>, author of
+many CPAN modules. The configuration syntax has been modified for use
+with Inline v0.30.
+
+=back
+
+=head2 Automatic Function Wrappers
+
+=over 4
+
+=item Problem
+
+You have some functions in a C library that you want to access from Perl
+exactly as you would from C.
+
+=item Solution
+
+The error function C<erf()> is probably defined in your standard math
+library. Annoyingly, Perl does not let you access it. To print out a
+small table of its values, just say:
+
+    perl -le 'use Inline C => q{ double erf(double); }, ENABLE => "AUTOWRAP"; print "$_ @{[erf($_)]}" for (0..10)'
+
+The excellent C<Term::ReadLine::Gnu> implements Term::ReadLine using the
+GNU ReadLine library. Here is an easy way to access just C<readline()>
+from that library:
+
+    package MyTerm;
+
+    use Inline C => Config =>
+               ENABLE => AUTOWRAP =>
+               LIBS => "-lreadline -lncurses -lterminfo -ltermcap ";
+    use Inline C => q{ char * readline(char *); };
+
+    package main;
+    my $x = MyTerm::readline("xyz: ");
+
+Note however that it fails to C<free()> the memory returned by readline,
+and that C<Term::ReadLine::Gnu> offers a much richer interface.
+
+=item Discussion
+
+We access existing functions by merely showing Inline their
+declarations, rather than a full definition. Of course the function
+declared must exist, either in a library already linked to Perl or in a
+library specified using the C<LIBS> option.
+
+The first example wraps a function from the standard math library, so
+Inline requires no additional C<LIBS> directive. The second uses the
+Config option to specify the libraries that contain the actual
+compiled C code.
+
+This behavior is always disabled by default. You must enable the
+C<AUTOWRAP> option to make it work.
+
+=item See Also
+
+C<readline>, C<Term::ReadLine::Gnu>
+
+=item Credits
+
+GNU ReadLine was written by Brian Fox <bfox@ai.mit.edu> and Chet Ramey
+<chet@ins.cwru.edu>. Term::ReadLine::Gnu was written by Hiroo Hayashi
+<hiroo.hayashi@computer.org>. Both are far richer than the slim
+interface given here!
+
+The idea of producing wrapper code given only a function declaration is
+taken from Swig by David M. Beazley <beazley@cs.uchicago.edu>.
+
+Ingy's inline editorial insight:
+
+This entire entry was contributed by Ariel Scolnicov
+<ariels@compugen.co.il>. Ariel also first suggested the idea for Inline
+to support function declaration processing.
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Complex Data
+
+=over 4
+
+=item Problem
+
+How do I deal with complex data types like hashes in Inline C?
+
+=item Solution
+
+    use Inline C => <<'END_OF_C_CODE';
+
+    void dump_hash(SV* hash_ref) {
+        HV* hash;
+        HE* hash_entry;
+        int num_keys, i;
+        SV* sv_key;
+        SV* sv_val;
+
+        if (! SvROK(hash_ref))
+            croak("hash_ref is not a reference");
+
+        hash = (HV*)SvRV(hash_ref);
+        num_keys = hv_iterinit(hash);
+        for (i = 0; i < num_keys; i++) {
+            hash_entry = hv_iternext(hash);
+            sv_key = hv_iterkeysv(hash_entry);
+            sv_val = hv_iterval(hash, hash_entry);
+            printf("%s => %s\n", SvPV(sv_key, PL_na), SvPV(sv_val, PL_na));
+        }
+        return;
+    }
+
+    END_OF_C_CODE
+
+    my %hash = (
+                Author => "Brian Ingerson",
+                Nickname => "INGY",
+                Module => "Inline.pm",
+                Version => "0.30",
+                Language => "C",
+               );
+
+    dump_hash(\%hash);
+
+=item Discussion
+
+The world is not made of scalars alone, although they are definitely
+the easiest creatures to deal with, when doing Inline stuff.
+Sometimes we need to deal with arrays, hashes, and code references,
+among other things.
+
+Since Perl subroutine calls only pass scalars as arguments, we'll
+need to use the argument type C<SV*> and pass references to more
+complex types.
+
+The above program dumps the key/value pairs of a hash. To figure it out,
+just curl up with L<perlapi> for a couple hours. Actually, its fairly
+straight forward once you are familiar with the calls.
+
+Note the C<croak> function call. This is the proper way to die from your
+C extensions.
+
+=item See Also
+
+See L<perlapi> for information about the Perl5 internal API.
+
+=item Credits
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Hash of Lists
+
+=over 4
+
+=item Problem
+
+How do I create a Hash of Lists from C?
+
+=item Solution
+
+    use Inline C;
+    use Data::Dumper;
+
+    $hash_ref = load_data("./cartoon.txt");
+    print Dumper $hash_ref;
+
+    __END__
+    __C__
+
+    static int next_word(char**, char*);
+
+    SV* load_data(char* file_name) {
+        char buffer[100], word[100], * pos;
+        AV* array;
+        HV* hash = newHV();
+        FILE* fh = fopen(file_name, "r");
+
+        while (fgets(pos = buffer, sizeof(buffer), fh)) {
+            if (next_word(&pos, word)) {
+                hv_store(hash, word, strlen(word),
+                        newRV_noinc((SV*)array = newAV()), 0);
+                while (next_word(&pos, word))
+                    av_push(array, newSVpvf("%s", word));
+            }
+        }
+        fclose(fh);
+        return newRV_noinc((SV*) hash);
+    }
+
+    static int next_word(char** text_ptr, char* word) {
+        char* text = *text_ptr;
+        while(*text != '\0' &&
+              *text <= ' ')
+            text++;
+        if (*text <= ' ')
+            return 0;
+        while(*text != '\0' &&
+              *text > ' ') {
+            *word++ = *text++;
+        }
+        *word = '\0';
+        *text_ptr = text;
+        return 1;
+    }
+
+=item Discussion
+
+This is one of the larger recipes. But when you consider the number of
+calories it has, it's not so bad. The function C<load_data> takes the
+name of a file as it's input. The file C<cartoon.text> might look like:
+
+    flintstones fred barney
+    jetsons     george jane elroy
+    simpsons    homer marge bart
+
+The function will read the file, parsing each line into words. Then it
+will create a new hash, whereby the first word in a line becomes a hash
+key and the remaining words are put into an array whose reference
+becomes the hash value. The output looks like this:
+
+    $VAR1 = {
+              'flintstones' => [
+                                 'fred',
+                                 'barney'
+                               ],
+              'simpsons' => [
+                              'homer',
+                              'marge',
+                              'bart'
+                            ],
+              'jetsons' => [
+                             'george',
+                             'jane',
+                             'elroy'
+                           ]
+            };
+
+=item See Also
+
+See L<perlapi> for information about the Perl5 internal API.
+
+=item Credits
+
+Al Danial <alnd@pacbell.net> requested a solution to this on
+comp.lang.perl.misc. He borrowed the idea from the "Hash of Lists"
+example in the Camel book.
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head1 Just Desserts
+
+=cut --------------------------------------------------------------------------
+
+=head2 Win32
+
+=over 4
+
+=item Problem
+
+How do I access Win32 DLL-s using Inline?
+
+=item Solution
+
+    use Inline C => DATA =>
+               LIBS => '-luser32';
+
+    $text = "@ARGV" || 'Inline.pm works with MSWin32. Scary...';
+
+    WinBox('Inline Text Box', $text);
+
+    __END__
+    __C__
+
+    #include <windows.h>
+
+    int WinBox(char* Caption, char* Text) {
+      return MessageBoxA(0, Text, Caption, 0);
+    }
+
+=item Discussion
+
+This example runs on MS Windows. It makes a text box appear on the
+screen which contains a message of your choice.
+
+The important thing is that its proof that you can use Inline to
+interact with Windows DLL-s. Very scary indeed. 8-o
+
+To use Inline on Windows with ActivePerl ( http://www.ActiveState.com )
+you'll need MS Visual Studio. You can also use the Cygwin environment,
+available at http://www.cygwin.com .
+
+=item See Also
+
+See L<Inline-Support> for more info on MSWin32 programming with Inline.
+
+=item Credits
+
+This example was adapted from some sample code written by Garrett Goebel
+<garrett@scriptpro.com>
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Embedding Perl in C
+
+=over 4
+
+=item Problem
+
+How do I use Perl from a regular C program?
+
+=item Solution
+
+    #!/usr/bin/cpr
+
+    int main(void) {
+
+        printf("Using Perl version %s from a C program!\n\n",
+               CPR_eval("use Config; $Config{version};"));
+
+        CPR_eval("use Data::Dumper;");
+        CPR_eval("print Dumper \\%INC;");
+
+        return 0;
+
+    }
+
+=item Discussion
+
+By using CPR. (C Perl Run)
+
+This example uses another Inline module, C<Inline::CPR>, available
+separately on CPAN. When you install this module it also installs a
+binary interpreter called C</usr/bin/cpr>. (The path may be different on
+your system)
+
+When you feed a C program to the CPR interpreter, it automatically
+compiles and runs your code using Inline. This gives you full access to
+the Perl internals. CPR also provides a set of easy to use C macros for
+calling Perl internals.
+
+This means that you can effectively "run" C source code by putting a CPR
+hashbang as the first line of your C program.
+
+=item See Also
+
+See L<Inline::CPR> for more information on using CPR.
+
+C<Inline::CPR> can be obtained from
+http://search.cpan.org/search?dist=Inline-CPR
+
+=item Credits
+
+Randal Schwartz <merlyn@stonehenge.com>, Randolph Bentson
+<bentson@grieg.holmsjoen.com>, Richard Anderson <starfire@zipcon.net>,
+and Tim Maher <tim@consultix-inc.com> helped me figure out how to write
+a program that would work as a hashbang.
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head1 Entertaining Guests
+
+As of version 0.30, Inline has the ability to work in cooperation with
+other modules that want to expose a C API of their own. The general
+syntax for doing this is:
+
+    use Inline with => 'Module';
+    use Inline C => ... ;
+
+This tells C<Module> to pass configuration options to Inline. Options
+like typemaps, include paths, and external libraries, are all resolved
+automatically so you can just concentrate on writing the functions.
+
+=cut --------------------------------------------------------------------------
+
+=head2 Event handling with Event.pm
+
+=over 4
+
+=item Problem
+
+You need to write a C callback for the C<Event.pm> module. Can this be
+done more easily with Inline?
+
+=item Solution
+
+    use Inline with => 'Event';
+
+    Event->timer(desc     => 'Timer #1',
+                 interval => 2,
+                 cb       => \&my_callback,
+                );
+
+    Event->timer(desc     => 'Timer #2',
+                 interval => 3,
+                 cb       => \&my_callback,
+                );
+
+    print "Starting...\n";
+    Event::loop;
+
+    use Inline C => <<'END';
+    void my_callback(pe_event* event) {
+        pe_timer * watcher = event->up;
+
+        printf("%s\n\tEvent priority = %d\n\tWatcher priority = %d\n\n",
+               SvPVX(watcher->base.desc),
+               event->prio,
+               watcher->base.prio
+              );
+    }
+    END
+
+=item Discussion
+
+The first line tells Inline to load the C<Event.pm> module. Inline then
+queries C<Event> for configuration information. It gets the name and
+location of Event's header files, typemaps and shared objects. The
+parameters that C<Event> returns look like:
+
+    INC => "-I $path/Event",
+    TYPEMAPS => "$path/Event/typemap",
+    MYEXTLIB => "$path/auto/Event/Event.$so",
+    AUTO_INCLUDE => '#include "EventAPI.h"',
+    BOOT => 'I_EVENT_API("Inline");',
+
+Doing all of this automatically allows you, the programmer, to simply
+write a function that receives a pointer of type C<'pe_event*'>. This
+gives you access to the C<Event> structure that was passed to you.
+
+In this example, I simply print values out of the structure. The Perl
+code defines 2 timer events which each invoke the same callback. The
+first one, every two seconds, and the second one, every three seconds.
+
+As of this writing, C<Event.pm> is the only CPAN module that works in
+cooperation with Inline.
+
+=item See Also
+
+Read the C<Event.pm> documentation for more information. It contains a
+tutorial showing several examples of using Inline with C<Event>.
+
+=item Credits
+
+Jochen Stenzel <perl@jochen-stenzel.de> originally came up with the idea
+of mixing Inline and C<Event>. He also authored the C<Event> tutorial.
+
+Joshua Pritikin <joshua.pritikin@db.com> is the author of C<Event.pm>.
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head1 Food for Thought
+
+=cut --------------------------------------------------------------------------
+
+=head2 Calling C from both Perl and C
+
+=over 4
+
+=item Problem
+
+I'd like to be able to call the same C function from both Perl and C.
+Also I like to define a C function that B<doesn't> get bound to Perl.
+How do I do that?
+
+=item Solution
+
+    print "9 + 5 = ", add(9, 5), "\n";
+    print "SQRT(9^2 + 5^2) = ", pyth(9, 5), "\n";
+    print "9 * 5 = ", mult(9, 5), "\n";
+
+    use Inline C => <<'END_C';
+    int add(int x, int y) {
+        return x + y;
+    }
+    static int mult(int x, int y) {
+        return x * y;
+    }
+    double pyth(int x, int y) {
+        return sqrt(add(mult(x, x), mult(y, y)));
+    }
+    END_C
+
+=item Discussion
+
+The program produces:
+
+    9 + 5 = 14
+    SQRT(9^2 + 5^2) = 10.295630140987
+    Can't locate auto/main/mult.al in @INC ...
+
+Every Inline function that is bound to Perl is also callable by C. You
+don't have to do anything special. Inline arranges it so that all the
+typemap code gets done by XS and is out of sight. By the time the C
+function receives control, everything has been converted from Perl to C.
+
+Of course if your function manipulates the Perl Stack, you
+probably don't want to call it from C (unless you I<really> know
+what you're doing).
+
+If you declare a function as C<static>, Inline won't bind it to Perl.
+That's why we were able to call C<mult()> from C but the call failed
+from Perl.
+
+=item See Also
+
+=item Credits
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Calling Perl from C
+
+=over 4
+
+=item Problem
+
+So now that I can call C from Perl, how do I call a Perl subroutine from
+an Inline C function.
+
+=item Solution
+
+    use Inline C;
+
+    for(1..5) {
+       c_func_1('This is the first line');
+       c_func_2('This is the second line');
+       print "\n";
+    }
+
+    sub perl_sub_1 {
+        print map "$_\n", @_;
+    }
+
+    __DATA__
+    __C__
+
+    void c_func_2(SV* text) {
+         dSP;
+
+         ENTER;
+         SAVETMPS;
+
+         XPUSHs(sv_2mortal(newSVpvf("Plus an extra line")));
+         PUTBACK;
+
+         call_pv("perl_sub_1", G_DISCARD);
+
+         FREETMPS;
+         LEAVE;
+    }
+
+    void c_func_1(SV* text) {
+         c_func_2(text);
+    }
+
+
+=item Discussion
+
+This demo previously made use of Inline Stack macros only - but that's
+not the correct way to do it. Instead, base the callbacks on the
+perlcall documentation (as we're now doing).
+
+Actually, this program demonstrates calling a C function which calls
+another C function which in turn calls a Perl subroutine.
+
+The nice thing about Inline C functions is that you can call them from
+both Perl-space B<and> C-space. That's because Inline creates a wrapper
+function around each C function. When you use Perl to call C you're
+actually calling that function's wrapper. The wrapper handles
+typemapping and Stack management, and then calls your C function.
+
+The first time we call C<c_func_1> which calls C<c_func_2>. The second
+time we call C<c_func_2> directly. C<c_func_2> calls the Perl subroutine
+(C<perl_sub_1>) using the internal C<perl_call_pv> function. It has to
+put arguments on the stack by hand. Since there is already one argument
+on the stack when we enter the function, the C<XPUSHs> ( which is equivalent
+to an C<Inline_Stack_Push> ) adds a second argument.
+
+We iterate through a 'for' loop 5 times just to demonstrate that things
+still work correctly when we do that. (This was where the previous
+rendition, making use solely of Inline Stack macros, fell down.)
+
+=item See Also
+
+See L<Inline::C> for more information about Stack macros.
+
+See L<perlapi> for more information about the Perl5 internal API.
+
+=item Credits
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Evaling C
+
+=over 4
+
+=item Problem
+
+I've totally lost my marbles and I want to generate C code at run time,
+and C<eval> it into Perl. How do I do this?
+
+=item Solution
+
+    use Inline;
+    use Code::Generator;
+
+    my $c_code = generate('foo_function');
+
+    Inline->bind(C => $c_code);
+
+    foo_function(1, 2, 3);
+
+=item Discussion
+
+I can't think of a real life application where you would want to
+generate C code on the fly, but at least I know how I would do it.
+:)
+
+The C<bind()> function of Inline let's you bind (compile/load/execute) C
+functions at run time. It takes all of the same arguments as 'use Inline
+C => ...'.
+
+The nice thing is that once a particular snippet is compiled, it remains
+cached so that it doesn't need to be compiled again. I can imagine that
+someday a mad scientist will dream up a self generating modeling system
+that would run faster and faster over time.
+
+If you know such a person, have them drop me a line.
+
+=item See Also
+
+=item Credits
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Providing a pure perl alternative
+
+=over 4
+
+=item Problem
+
+I want to write a script that will use a C subroutine if Inline::C is installed,
+but will otherwise use an equivalent pure perl subroutine if Inline::C is not
+already installed.
+How do I do this?
+
+=item Solution
+
+  use strict;
+   use warnings;
+
+  eval {
+   require Inline;
+   Inline->import (C => Config =>
+                   BUILD_NOISY => 1);
+   Inline->import (C =><<'EOC');
+
+   int foo() {
+     warn("Using Inline\n");
+     return 42;
+   }
+
+  EOC
+  };
+
+  if($@) {
+    *foo =\&bar;
+  }
+
+  sub bar {
+    warn("Using Pure Perl Implementation\n");
+    return 42;
+  }
+
+  my $x = foo();
+  print "$x\n";
+
+=item Discussion
+
+If Inline::C is installed and functioning properly, the C sub foo is called
+by the perl code. Otherwise, $@ gets set, and the equivalent pure perl
+function bar is instead called.
+
+Note, too, that the pure perl sub bar can still be explicitly called even
+if Inline::C is available.
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head2 Accessing Fortran subs using Inline::C
+
+=over 4
+
+=item Problem
+
+I've been given a neat little sub written in fortran that takes, as its
+args, two integers and returns their product. And I would like to use
+that sub as is from Inline::C. By way of example, let's say that the
+fortran source file is named 'prod.f', and that it looks like this:
+
+      integer function sqarea(r,s)
+      integer r, s
+      sqarea = r*s
+      return
+      end
+
+=item Solution
+
+We can't access that code directly, but we can compile it into a
+library which we *can* then access from Inline::C.
+Using gcc we could run:
+
+  gfortran -c prod.f -o prod.o
+  ar cru libprod.a prod.o
+
+The function is then accessible as follows:
+
+  use warnings;
+
+  use Inline C => Config =>
+    LIBS =>
+     '-L/full/path/to/libprod_location -lprod -lgfortran';
+
+  use Inline C => <<'  EOC';
+
+  int wrap_sqarea(int a, int b) {
+      return sqarea_(&a, &b);
+  }
+
+  EOC
+
+  $x = 15;
+  $y = $x + 3;
+  $ret = wrap_sqarea($x, $y);
+  print "Product of $x and $y is $ret\n";
+
+=item Discussion
+
+Note firstly that, although the function is specified as 'sqarea'
+in the source file, gfortran appends an underscore to the name when
+the source is compiled. (I don't know if *all* fortran compilers do
+this.) Therefore Inline::C needs to call the function as 'sqarea_'.
+
+Secondly, because fortran subs pass args by reference, we need to
+pass the *addresses* of the two integer args to sqarea() when we call
+it from our Inline::C sub.
+
+If using g77 instead of gfortran, the only necessary change is that
+we specify '-lg2c' instead of '-lgfortran' in our 'LIBS' setting.
+
+=back
+
+=cut --------------------------------------------------------------------------
+
+=head1 SEE ALSO
+
+For generic information about Inline, see L<Inline>.
+
+For information about using Inline with C see L<Inline::C>.
+
+For information on supported languages and platforms see
+L<Inline-Support>.
+
+For information on writing your own Inline language support module, see
+L<Inline-API>.
+
+Inline's mailing list is inline@perl.org
+
+To subscribe, send email to inline-subscribe@perl.org
+
+=head1 AUTHOR
+
+Brian Ingerson <INGY@cpan.org>
+
+=head1 COPYRIGHT
+
+Copyright (c) 2001, 2002. Brian Ingerson.
+
+Copyright (c) 2008, 2010-2013. Sisyphus.
+
+All Rights Reserved. This module is free software. It may be
+used, redistributed and/or modified under the terms of the Perl
+Artistic License.
+
+See http://www.perl.com/perl/misc/Artistic.html
+
+=cut

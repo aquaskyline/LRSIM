@@ -1,0 +1,554 @@
+=head1 NAME
+
+Inline::C - Write Perl Subroutines in C
+
+=head1 DESCRIPTION
+
+C<Inline::C> is a module that allows you to write Perl subroutines in C.
+Since version 0.30 the Inline module supports multiple programming
+languages and each language has its own support module. This document
+describes how to use Inline with the C programming language. It also
+goes a bit into Perl C internals.
+
+If you want to start working with programming examples right away, check
+out L<Inline::C-Cookbook>. For more information on Inline in general,
+see L<Inline>.
+
+=head1 Usage
+
+You never actually use C<Inline::C> directly. It is just a support
+module for using C<Inline.pm> with C. So the usage is always:
+
+    use Inline C => ...;
+
+or
+
+    bind Inline C => ...;
+
+=head1 Function Definitions
+
+The Inline grammar for C recognizes certain function definitions (or
+signatures) in your C code. If a signature is recognized by Inline, then
+it will be available in Perl-space. That is, Inline will generate the
+"glue" necessary to call that function as if it were a Perl subroutine.
+If the signature is not recognized, Inline will simply ignore it, with
+no complaints. It will not be available from Perl-space, although it
+I<will> be available from C-space.
+
+Inline looks for ANSI/prototype style function definitions. They must be
+of the form:
+
+    return-type function-name ( type-name-pairs ) { ... }
+
+The most common types are: C<int>, C<long>, C<double>, C<char*>, and
+C<SV*>. But you can use any type for which Inline can find a typemap.
+Inline uses the C<typemap> file distributed with Perl as the default.
+You can specify more typemaps with the TYPEMAPS configuration option.
+
+A return type of C<void> may also be used. The following are examples of
+valid function definitions.
+
+    int Foo(double num, char* str) {
+    void Foo(double num, char* str) {
+    void Foo(SV*, ...) {
+    long Foo(int i, int j, ...) {
+    SV* Foo(void) { # 'void' arg invalid with the ParseRecDescent parser.
+                    # Works only with the ParseRegExp parser.
+                    # See the section on USING (below).
+    SV* Foo() {  # Alternative to specifying 'void' arg. Is valid with
+                 # both the ParseRecDescent and ParseRegExp parsers.
+
+The following definitions would not be recognized:
+
+    Foo(int i) {               # no return type
+    int Foo(float f) {         # no (default) typemap for float
+    int Foo(num, str) double num; char* str; {
+
+Notice that Inline only looks for function I<definitions>, not function
+I<prototypes>. Definitions are the syntax directly preceding a function
+body. Also Inline does not scan external files, like headers. Only the
+code passed to Inline is used to create bindings; although other
+libraries can linked in, and called from C-space.
+
+=head1 C Configuration Options
+
+For information on how to specify Inline configuration options, see
+L<Inline>. This section describes each of the configuration options
+available for C. Most of the options correspond either to MakeMaker or
+XS options of the same name. See L<ExtUtils::MakeMaker> and L<perlxs>.
+
+=head2 AUTO_INCLUDE
+
+Specifies extra statements to automatically included. They will be added
+onto the defaults. A newline char will be automatically added.
+
+    use Inline C => Config => AUTO_INCLUDE => '#include "yourheader.h"';
+
+=head2 AUTOWRAP
+
+If you 'ENABLE => AUTOWRAP', Inline::C will parse function declarations
+(prototype statements) in your C code. For each declaration it can bind
+to, it will create a dummy wrapper that will call the real function
+which may be in an external library. This is a nice convenience for
+functions that would otherwise just require an empty wrapper function.
+
+This is similar to the base functionality you get from C<h2xs>. It can
+be very useful for binding to external libraries.
+
+=head2 BOOT
+
+Specifies C code to be executed in the XS BOOT section. Corresponds to
+the XS parameter.
+
+=head2 CC
+
+Specify which compiler to use.
+
+=head2 CCFLAGS
+
+Specify compiler flags - same as ExtUtils::MakeMaker's CCFLAGS option.
+Whatever gets specified here replaces the default $Config{ccflags}.
+Often, you'll want to add an extra flag or two without
+clobbering the default flags in which case you could
+instead use CCFLAGSEX (see below) or, iff Config.pm has already
+been loaded:
+
+  use Inline C => Config => CCFLAGS => $Config{ccflags} . " -DXTRA -DTOO";
+
+=head2 CCFLAGSEX
+
+Extend compiler flags.
+Sets CCFLAGS to $Config{ccflags} followed by a space, followed by
+the specified value:
+
+  use Inline C => Config => CCFLAGSEX => "-DXTRA -DTOO";
+
+=head2 FILTERS
+
+Allows you to specify a list of source code filters. If more than one is
+requested, be sure to group them with an array ref. The filters can
+either be subroutine references or names of filters provided by the
+supplementary Inline::Filters module.
+
+Your source code will be filtered just before it is parsed by Inline.
+The MD5 fingerprint is generated before filtering. Source code
+filters can be used to do things like stripping out POD
+documentation, pre-expanding #include statements or whatever else you
+please. For example:
+
+    use Inline C => DATA =>
+               FILTERS => [Strip_POD => \&MyFilter => Preprocess ];
+
+Filters are invoked in the order specified. See L<Inline::Filters> for
+more information.
+
+=head2 INC
+
+Specifies an include path to use. Corresponds to the MakeMaker parameter.
+Expects a fully qualified path.
+
+    use Inline C => Config => INC => '-I/inc/path';
+
+=head2 LD
+
+Specify which linker to use.
+
+=head2 LDDLFLAGS
+
+Specify which linker flags to use.
+
+NOTE:
+These flags will completely override the existing flags, instead of
+just adding to them. So if you need to use those too, you must
+respecify them here.
+
+=head2 LIBS
+
+Specifies external libraries that should be linked into your code.
+Corresponds to the MakeMaker parameter.
+Provide a fully qualified path with the -L switch if the library is
+in a location where it won't be found automatically.
+
+    use Inline C => Config => LIBS => '-lyourlib';
+
+or
+
+    use Inline C => Config => LIBS => '-L/your/path -lyourlib';
+
+=head2 MAKE
+
+Specify the name of the 'make' utility to use.
+
+=head2 MYEXTLIB
+
+Specifies a user compiled object that should be linked in. Corresponds
+to the MakeMaker parameter.
+Expects a fully qualified path.
+
+    use Inline C => Config => MYEXTLIB => '/your/path/yourmodule.so';
+
+=head2 OPTIMIZE
+
+This controls the MakeMaker OPTIMIZE setting. By setting this value to
+C<'-g'>, you can turn on debugging support for your Inline extensions.
+This will allow you to be able to set breakpoints in your C code using a
+debugger like gdb.
+
+=head2 PREFIX
+
+Specifies a prefix that will be automatically stripped from C functions
+when they are bound to Perl. Useful for creating wrappers for shared
+library API-s, and binding to the original names in Perl. Also useful
+when names conflict with Perl internals. Corresponds to the XS
+parameter.
+
+    use Inline C => Config => PREFIX => 'ZLIB_';
+
+=head2 PRE_HEAD
+
+Specifies code that will precede the inclusion of all files specified
+in AUTO_INCLUDE (ie EXTERN.h, perl.h, XSUB.h, INLINE.h and anything else
+that might have been added to AUTO_INCLUDE by the user). If the specified
+value identifies a file, the contents of that file will be inserted,
+otherwise the specified value is inserted.
+
+  use Inline C => Config => PRE_HEAD => $code_or_filename;
+
+=head2 TYPEMAPS
+
+Specifies extra typemap files to use. These types will modify the
+behaviour of the C parsing. Corresponds to the MakeMaker parameter.
+Specify either a fully qualified path or a path relative to the cwd
+(ie relative to what the cwd is at the time the script is loaded).
+
+    use Inline C => Config => TYPEMAPS => '/your/path/typemap';
+
+=head2 USING
+
+Specifies which parser to use. Default is 'ParseRecDescent', which
+uses the Parse::RecDescent module. The only other option is
+'ParseRegExp', which uses the Inline::C::ParseRegExp module that ships
+with Inline.
+
+
+    use Inline C => Config => USING => 'ParseRegExp';
+
+=head1 C-Perl Bindings
+
+This section describes how the C<Perl> variables get mapped to C<C>
+variables and back again.
+
+First, you need to know how C<Perl> passes arguments back and forth to
+subroutines. Basically it uses a stack (also known as the B<Stack>).
+When a sub is called, all of the parenthesized arguments get expanded
+into a list of scalars and pushed onto the B<Stack>. The subroutine then
+pops all of its parameters off of the B<Stack>. When the sub is done, it
+pushes all of its return values back onto the B<Stack>.
+
+The B<Stack> is an array of scalars known internally as C<SV>'s. The
+B<Stack> is actually an array of B<pointers to SV> or C<SV*>; therefore
+every element of the B<Stack> is natively a C<SV*>. For I<FMTYEWTK>
+about this, read C<perldoc perlguts>.
+
+So back to variable mapping. XS uses a thing known as "typemaps" to turn
+each C<SV*> into a C<C> type and back again. This is done through
+various XS macro calls, casts and the Perl API. See C<perldoc perlapi>.
+XS allows you to define your own typemaps as well for fancier
+non-standard types such as C<typedef>-ed structs.
+
+Inline uses the default Perl typemap file for its default types. This
+file is called C</usr/local/lib/perl5/5.6.1/ExtUtils/typemap>, or
+something similar, depending on your Perl installation. It has
+definitions for over 40 types, which are automatically used by Inline.
+(You should probably browse this file at least once, just to get an idea
+of the possibilities.)
+
+Inline parses your code for these types and generates the XS code to map
+them. The most commonly used types are:
+
+ - int
+ - long
+ - double
+ - char*
+ - void
+ - SV*
+
+If you need to deal with a type that is not in the defaults, just
+use the generic C<SV*> type in the function definition. Then inside
+your code, do the mapping yourself. Alternatively, you can create
+your own typemap files and specify them using the C<TYPEMAPS>
+configuration option.
+
+A return type of C<void> has a special meaning to Inline. It means that
+you plan to push the values back onto the B<Stack> yourself. This is
+what you need to do to return a list of values. If you really don't want
+to return anything (the traditional meaning of C<void>) then simply
+don't push anything back.
+
+If ellipsis or C<...> is used at the end of an argument list, it means
+that any number of C<SV*>s may follow. Again you will need to pop the
+values off of the C<Stack> yourself.
+
+See L<"Examples"> below.
+
+=head1 The Inline Stack Macros
+
+When you write Inline C, the following lines are automatically prepended
+to your code (by default):
+
+    #include "EXTERN.h"
+    #include "perl.h"
+    #include "XSUB.h"
+    #include "INLINE.h"
+
+The file C<INLINE.h> defines a set of macros that are useful for
+handling the Perl Stack from your C functions.
+
+=over 4
+
+=item Inline_Stack_Vars
+
+You'll need to use this one, if you want to use the others. It sets up a
+few local variables: C<sp>, C<items>, C<ax> and C<mark>, for use by the
+other macros. It's not important to know what they do, but I mention
+them to avoid possible name conflicts.
+
+NOTE:
+Since this macro declares variables, you'll need to put it with your
+other variable declarations at the top of your function. It must
+come before any executable statements and before any other
+C<Inline_Stack> macros.
+
+=item Inline_Stack_Items
+
+Returns the number of arguments passed in on the Stack.
+
+=item Inline_Stack_Item(i)
+
+Refers to a particular C<SV*> in the Stack, where C<i> is an index
+number starting from zero. Can be used to get or set the value.
+
+=item Inline_Stack_Reset
+
+Use this before pushing anything back onto the Stack. It resets the
+internal Stack pointer to the beginning of the Stack.
+
+=item Inline_Stack_Push(sv)
+
+Push a return value back onto the Stack. The value must be of type C<SV*>.
+
+=item Inline_Stack_Done
+
+After you have pushed all of your return values, you must call this macro.
+
+=item Inline_Stack_Return(n)
+
+Return C<n> items on the Stack.
+
+=item Inline_Stack_Void
+
+A special macro to indicate that you really don't want to return
+anything. Same as:
+
+    Inline_Stack_Return(0);
+
+Please note that this macro actually B<returns> from your function.
+
+=back
+
+Each of these macros is available in 3 different styles to suit your
+coding tastes. The following macros are equivalent.
+
+    Inline_Stack_Vars
+    inline_stack_vars
+    INLINE_STACK_VARS
+
+All of this functionality is available through XS macro calls as well.
+So why duplicate the functionality? There are a few reasons why I
+decided to offer this set of macros. First, as a convenient way to
+access the Stack. Second, for consistent, self documenting, non-cryptic
+coding. Third, for future compatibility. It occured to me that if a lot
+of people started using XS macros for their C code, the interface might
+break under Perl6. By using this set, hopefully I will be able to insure
+future compatibility of argument handling.
+
+Of course, if you use the rest of the Perl API, your code will most
+likely break under Perl6. So this is not a 100% guarantee. But since
+argument handling is the most common interface you're likely to use, it
+seemed like a wise thing to do.
+
+=head1 Writing C Subroutines
+
+The definitions of your C functions will fall into one of the following
+four categories. For each category there are special considerations.
+
+=over 4
+
+=item 1
+
+    int Foo(int arg1, char* arg2, SV* arg3) {
+
+This is the simplest case. You have a non C<void> return type and a
+fixed length argument list. You don't need to worry about much. All the
+conversions will happen automatically.
+
+=item 2
+
+    void Foo(int arg1, char* arg2, SV* arg3) {
+
+In this category you have a C<void> return type. This means that either
+you want to return nothing, or that you want to return a list. In the
+latter case you'll need to push values onto the B<Stack> yourself. There
+are a few Inline macros that make this easy. Code something like this:
+
+    int i, max; SV* my_sv[10];
+    Inline_Stack_Vars;
+    Inline_Stack_Reset;
+    for (i = 0; i < max; i++)
+      Inline_Stack_Push(my_sv[i]);
+    Inline_Stack_Done;
+
+After resetting the Stack pointer, this code pushes a series of return
+values. At the end it uses C<Inline_Stack_Done> to mark the end of the
+return stack.
+
+If you really want to return nothing, then don't use the
+C<Inline_Stack_> macros. If you must use them, then set use
+C<Inline_Stack_Void> at the end of your function.
+
+=item 3
+
+    char* Foo(SV* arg1, ...) {
+
+In this category you have an unfixed number of arguments. This
+means that you'll have to pop values off the B<Stack> yourself. Do
+it like this:
+
+    int i;
+    Inline_Stack_Vars;
+    for (i = 0; i < Inline_Stack_Items; i++)
+      handle_sv(Inline_Stack_Item(i));
+
+The return type of C<Inline_Stack_Item(i)> is C<SV*>.
+
+=item 4
+
+    void* Foo(SV* arg1, ...) {
+
+In this category you have both a C<void> return type and an
+unfixed number of arguments. Just combine the techniques from
+Categories 3 and 4.
+
+=back
+
+=head1 Examples
+
+Here are a few examples. Each one is a complete program that you can try
+running yourself. For many more examples see L<Inline::C-Cookbook>.
+
+=head2 Example #1 - Greetings
+
+This example will take one string argument (a name) and print a
+greeting. The function is called with a string and with a number. In the
+second case the number is forced to a string.
+
+Notice that you do not need to C<#include <stdio.h>>. The C<perl.h>
+header file which gets included by default, automatically loads the
+standard C header files for you.
+
+    use Inline C;
+    greet('Ingy');
+    greet(42);
+    __END__
+    __C__
+    void greet(char* name) {
+      printf("Hello %s!\n", name);
+    }
+
+=head2 Example #2 - and Salutations
+
+This is similar to the last example except that the name is passed in as
+a C<SV*> (pointer to Scalar Value) rather than a string (C<char*>). That
+means we need to convert the C<SV> to a string ourselves. This is
+accomplished using the C<SvPVX> function which is part of the C<Perl>
+internal API. See C<perldoc perlapi> for more info.
+
+One problem is that C<SvPVX> doesn't automatically convert strings
+to numbers, so we get a little surprise when we try to greet C<42>.
+The program segfaults, a common occurence when delving into the
+guts of Perl.
+
+    use Inline C;
+    greet('Ingy');
+    greet(42);
+    __END__
+    __C__
+    void greet(SV* sv_name) {
+      printf("Hello %s!\n", SvPVX(sv_name));
+    }
+
+=head2 Example #3 - Fixing the problem
+
+We can fix the problem in Example #2 by using the C<SvPV> function
+instead. This function will stringify the C<SV> if it does not contain a
+string. C<SvPV> returns the length of the string as it's second
+parameter. Since we don't care about the length, we can just put
+C<PL_na> there, which is a special variable designed for that purpose.
+
+    use Inline C;
+    greet('Ingy');
+    greet(42);
+    __END__
+    __C__
+    void greet(SV* sv_name) {
+      printf("Hello %s!\n", SvPV(sv_name, PL_na));
+    }
+
+=head1 SEE ALSO
+
+For general information about Inline see L<Inline>.
+
+For sample programs using Inline with C see L<Inline::C-Cookbook>.
+
+For information on supported languages and platforms see
+L<Inline-Support>.
+
+For information on writing your own Inline Language Support Module, see
+L<Inline-API>.
+
+Inline's mailing list is inline@perl.org
+
+To subscribe, send email to inline-subscribe@perl.org
+
+=head1 BUGS AND DEFICIENCIES
+
+=over 4
+
+=item 1
+
+If you use C function names that happen to be used internally by Perl,
+you will get a load error at run time. There is currently no
+functionality to prevent this or to warn you. For now, a list of Perl's
+internal symbols is packaged in the Inline module distribution under the
+filename C<'symbols.perl'>. Avoid using these in your code.
+
+=back
+
+=head1 AUTHOR
+
+Brian Ingerson <INGY@cpan.org>
+
+Sisyphus <sisyphus@cpan.org> fixed some bugs and is current co-maintainer.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2000-2002. Brian Ingerson.
+
+Copyright (c) 2008, 2010-2012. Sisyphus.
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+See http://www.perl.com/perl/misc/Artistic.html
+
+=cut

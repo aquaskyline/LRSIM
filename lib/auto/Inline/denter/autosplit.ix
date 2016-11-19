@@ -1,0 +1,21 @@
+# Index created by AutoSplit for blib/lib/Inline/denter.pm
+#    (file acts as timestamp)
+package Inline::denter;
+sub indent  ;
+sub indent_data  ;
+sub indent_value  ;
+sub indent_hash  ;
+sub indent_array  ;
+sub indent_scalar  ;
+sub indent_ref  ;
+sub indent_undef  ;
+sub indent_name  ;
+sub _print_ref  ;
+sub M01_invalid_indent_width  ;
+sub M02_no_key_end_marker  ;
+sub M03_no_value_end_marker  ;
+sub M04_mismatched_quotes  ;
+sub M05_invalid_key_value  ;
+sub M06_invalid_indent_level  ;
+sub M07_invalid_scalar_value  ;
+1;

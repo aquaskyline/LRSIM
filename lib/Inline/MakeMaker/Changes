@@ -1,0 +1,113 @@
+Revision history for Perl extension Inline::MakeMaker.
+
+---
+version 0.53
+date     Wed 1 May 2013
+         version 0.53 released to CPAN
+
+---
+version 0.52_02
+date     Wed 24 Apr 2013
+         version 0.52_02 released to CPAN
+
+---
+version 0.52_01
+date     Thurs 11 Apr 2013
+         version 0.52_01 released to CPAN
+
+---
+version 0.52
+date     Thurs 07 Mar 2013
+         version 0.52 released to CPAN
+
+---
+version 0.51_03
+date:    Wed 28 Nov 2012
+         Version 0.51_03 released to CPAN.
+
+---
+version 0.51_02
+date:    Tues 20 Nov 2012
+         Version 0.51_02 released to CPAN.
+
+---
+version 0.51_01
+date:    Tues 20 Nov 2012
+         Version 0.51_01 released to CPAN.
+
+---
+version 0.51
+date:    Sat 13 Oct 2012
+         Version 0.51 released to CPAN.
+
+---
+version 0.50_03
+date:    Mon 8 Oct 2012
+         Version 0.50_03 released to CPAN.
+
+---
+version 0.50_02
+date:    Thur 24 May 2012
+         Version 0.50_02 released to CPAN.
+
+---
+version: 0.50_02
+date:    Tues 14 Feb 2012
+         MakeMaker.pm - Bump version number to 0.50_02
+
+---
+version: 0.50_01
+date:    Sun 12 Feb 2012
+         Version 0.50_01 released to CPAN.
+
+---
+version: 0.50_01
+date:    Wed 8 Feb 2012
+         Makemaker.pm - Bump version number to 0.50_01
+
+---
+version: 0.50
+date:    Tues 7 Feb 2012
+         Version 0.50 released to CPAN
+         Makemaker.pm - Bump version number to 0.50
+
+---
+version: 0.49_02
+date:    Fri 3 Feb 2012
+  - Bring version numbering into line with recommendations made in
+    http://perldoc.perl.org/perlmodstyle.html#Version-numbering
+
+---
+version: 0.44
+date:    Tue Oct  8 11:54:10 PDT 2002
+changes:
+  - Made Inline module builds be noisy (show all compiler messages).
+
+---
+version: 0.44
+date:    Tue Oct  8 11:54:10 PDT 2002
+changes:
+  - Rewrote the whole module. Much simpler and flexible now.
+
+0.41  Tue Jun  5 02:59:53 PDT 2001
+	- Made dependencies more make like. Works very nice in trees.
+
+0.41  Sun Jun  3 20:34:49 PDT 2001
+	- Fixed bug. Needed to stack versions as well as names.
+
+0.41  Sun Jun  3 20:34:49 PDT 2001
+	- Allow MY::postamble in non Inline Makefile.PLs
+	  Thanks David Coppit
+
+0.41  Sat Jun  2 19:53:58 PDT 2001
+	- Fixed to work properly in Makefile.PL hierarchies.
+          Thanks Brett.
+
+0.40  Sun May 13 23:30:02 PDT 2001
+	- First version of Inline::MakeMaker.
+          Supports installing Inline extensions like regular XS ones.
+
+0.01  Mon May  7 22:30:09 2001
+	- original version; created by h2xs 1.21 with options
+		-PAXn Inline::MakeMaker
+
