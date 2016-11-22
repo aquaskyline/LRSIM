@@ -107,7 +107,7 @@ int main(int argc, char **argv)
     //Output
     {
       fprintf(fq1OFH, "%s%s%s%s%s%s", buf1, bcSeq, buf2, buf3, bcQual, buf4);
-      fprintf(fq2OFH, "%s%s%s%s", buf1, buf2, buf3, buf4);
+      fprintf(fq2OFH, "%s%s%s%s", buf5, buf6, buf7, buf8);
       ++count;
       if(count % 100000 == 0)
       {
