@@ -27,7 +27,7 @@ use strict;
 use warnings;
 use feature 'state';
 use threads;
-#use threads::shared;
+use threads::shared;
 use IO::Handle;
 use Getopt::Std;
 use Data::Dumper;
@@ -265,7 +265,7 @@ sub main
   CHKPOINT3:
   {
     my $threadsPerHaplotype = 12;
-    our $dwgsimGenReadsPostProcess = 0;
+    our $needPostprocess :shared = 0;
     our $readsPerHaplotype = int($opts{x} * 1000 * 1000 / $opts{d} * 1.5 / $threadsPerHaplotype);
     sub dwgsimGenReads
     {
@@ -274,11 +274,11 @@ sub main
       my $j = shift @_;
       my $readLenghtWithoutBarcode = 135;
       my $readLenghtWithBarcode = 151;
+      ++$needPostprocess;
       # dwgsim command
       # ./dwgsim -N 1000 -e 0.02 -E 0.02 -d 350 -s 35 -1 151 -2 151 -S 0 -c 0 ref.fa ./test
       if(-e "$opts{p}.dwgsim.$i.12.fastq")
       { &Log("DWGSIM round $i done already"); return; }
-      ++$dwgsimGenReadsPostProcess;
       &Log("DWGSIM round $i thread $j start");
       &Log("$absPath/dwgsim -N $readsPerHaplotype -e $opts{e} -E $opts{E} -d $opts{i} -s $opts{s} -1 $readLenghtWithoutBarcode -2 $readLenghtWithBarcode -H -y 0 -S 0 -c 0 -m /dev/null $opts{p}.survivor.$i.clean.fasta $opts{p}.dwgsim.$i.$j");
       ++$fnToBeUnlinkAtExit{"$opts{p}.dwgsim.$i.$j.12.fastq"};
@@ -301,9 +301,9 @@ sub main
       for(my $j = 0; $j < $threadsPerHaplotype; ++$j)
       {
         $threadPool[$i*$threadsPerHaplotype+$j]->join();
-        if($dwgsimGenReadsPostProcess != 0)
+        $SIG{INT} = $SIG{TERM} = \&signal_handler_wait;
+        if($needPostprocess != 0)
         {
-          $SIG{INT} = $SIG{TERM} = \&signal_handler_wait;
           if($j == 0)
           {
             rename("$opts{p}.dwgsim.$i.0.12.fastq","$opts{p}.dwgsim.$i.12.fastq");
@@ -314,8 +314,8 @@ sub main
             system("cat $opts{p}.dwgsim.$i.$j.12.fastq >> $opts{p}.dwgsim.$i.12.fastq");
             unlink("$opts{p}.dwgsim.$i.$j.12.fastq");
           }
-          $SIG{INT} = $SIG{TERM} = \&signal_handler;
         }
+        $SIG{INT} = $SIG{TERM} = \&signal_handler;
       }
     }
   }
@@ -385,7 +385,7 @@ sub main
         {
           $l2=<$fh>; $l3=<$fh>; $l4=<$fh>; $l5=<$fh>; $l6=<$fh>; $l7=<$fh>; $l8=<$fh>;
           $newFpos = tell($fh);
-          unless($l1=~/@(chr\S+?)_.*?(\d+?)_/) { &LogAndDie("Cannot find correct chromosome and position in $l1."); }
+          unless($l1=~/@(\S+)_(\d+)_\d+_\d_\d_\d_\d_\d+:\d+:\d+_\d+:\d+:\d+_\S+\/1/) { &LogAndDie("Cannot find correct chromosome and position in $l1."); }
           my $gCoord = &GenomeCoord2Idx(\%faidx, "$1", $2);
           if($gCoord < 0 || $gCoord >= $genomeSize)
           { &LogAndDie("$1 $2 $gCoord $fpos"); }
