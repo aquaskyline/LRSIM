@@ -266,7 +266,7 @@ sub main
   #Generate reads for haplotypes
   CHKPOINT3:
   {
-    my $threadsPerHaplotype = 12;
+    my $threadsPerHaplotype = 6;
     our $needPostprocess :shared = 0;
     our $readsPerHaplotype = int($opts{x} * 1000 * 1000 / $opts{d} * 1.5 / $threadsPerHaplotype);
     sub dwgsimGenReads
