@@ -87,9 +87,9 @@ sub main
   {
     die "The value of -i should be set between 350 and 400\n" if ( $opts{i} < 350 || $opts{i} > 400 );
     die "The value of -s should be set between 35 and 40\n" if ( $opts{s} < 35 || $opts{s} > 40 );
-    die "The value of -x should be set between 800 and 1200\n" if ( $opts{x} < 800 || $opts{x} > 1200 );
+    die "The value of -x should be set between 400 and 800\n" if ( $opts{x} < 400 || $opts{x} > 800 );
     die "The value of -f should be set between 20 and 150\n" if ( $opts{f} < 20 || $opts{f} > 150 );
-    die "The value of -t should be set between 400 and 800\n" if ( $opts{t} < 400 || $opts{t} > 800 );
+    die "The value of -t should be set between 100 and 3000\n" if ( $opts{t} < 100 || $opts{t} > 3000 );
     die "The value of -m should be set between 5 and 15\n" if ( $opts{m} < 5 || $opts{m} >15 );
   }
   warn "$opts{p}.status exists\n" if (-e "$opts{p}.status");
@@ -229,6 +229,7 @@ sub main
       for(my $i = 0; $i < $opts{d}; ++$i)
       {
         $threadPool[$i] = async{cleanUpFasta($i)};
+        sleep(2+int(rand(3)));;
       }
       for(my $i = 0; $i < $opts{d}; ++$i)
       {
@@ -251,6 +252,7 @@ sub main
       for(my $i = 0; $i < $opts{d}; ++$i)
       {
         $threadPool[$i] = async{createFaidx($i)};
+        sleep(2+int(rand(3)));;
       }
       for(my $i = 0; $i < $opts{d}; ++$i)
       {
@@ -294,6 +296,7 @@ sub main
       for(my $j = 0; $j < $threadsPerHaplotype; ++$j)
       {
         $threadPool[$i*$threadsPerHaplotype+$j] = async{dwgsimGenReads($i, $j)};
+        sleep(2+int(rand(3)));;
       }
     }
     for(my $i = 0; $i < $opts{d}; ++$i)
@@ -507,6 +510,7 @@ sub main
     {
       #$threadPool[$i] = async{simReads($i)};
       simReads($i);
+      sleep(2+int(rand(3)));;
     }
     #for(my $i = 0; $i < $opts{d}; ++$i)
     #{
@@ -536,6 +540,7 @@ sub main
     for(my $i = 0; $i < $opts{d}; ++$i)
     {
       $threadPool[$i] = async{sortManifest($i)};
+      sleep(2+int(rand(3)));;
     }
     for(my $i = 0; $i < $opts{d}; ++$i)
     {
@@ -567,6 +572,7 @@ sub main
     for(my $i = 0; $i < $opts{d}; ++$i)
     {
       $threadPool[$i] = async{extractReads($i)};
+      sleep(2+int(rand(3)));;
     }
     for(my $i = 0; $i < $opts{d}; ++$i)
     {
