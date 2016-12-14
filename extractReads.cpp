@@ -46,8 +46,8 @@ int main(int argc, char **argv)
     char cmd2[1024];
     if(fastOutputModule == 2)
     {
-      sprintf(cmd1, "%s | %s -c > %s_R1_001.fastq.gz", bfrPath, pigzPath, argv[3]);
-      sprintf(cmd2, "%s | %s -c > %s_R2_001.fastq.gz", bfrPath, pigzPath, argv[3]);
+      sprintf(cmd1, "%s | %s -p 12 -c > %s_R1_001.fastq.gz", bfrPath, pigzPath, argv[3]);
+      sprintf(cmd2, "%s | %s -p 12 -c > %s_R2_001.fastq.gz", bfrPath, pigzPath, argv[3]);
     }
     else
     {
@@ -106,8 +106,10 @@ int main(int argc, char **argv)
     
     //Output
     {
-      fprintf(fq1OFH, "%s%s%s%s%s%s", buf1, bcSeq, buf2, buf3, bcQual, buf4);
-      fprintf(fq2OFH, "%s%s%s%s", buf5, buf6, buf7, buf8);
+      buf1[strcspn(buf1, "\r\n")] = 0;
+      fprintf(fq1OFH, "%s 1:N:0:1\n%s%s%s%s%s", buf1, bcSeq, buf2, buf3, bcQual, buf4);
+      buf5[strcspn(buf5, "\r\n")] = 0;
+      fprintf(fq2OFH, "%s 2:N:0:1\n%s%s%s", buf5, buf6, buf7, buf8);
       ++count;
       if(count % 100000 == 0)
       {
