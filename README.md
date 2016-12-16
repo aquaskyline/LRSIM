@@ -1,3 +1,7 @@
+## Simulator for 10X Genomics Linked Reads
+
+This package simulates whole genome sequencing using 10X Genomics Linked Read technology.  We have attempted to realistically capture all of the relevant steps of the 10X protocol so that it can be used to faithfully evaluate linked read sequencing of different genomes, input libraries, and short read sequencing conditions in silico. We have tested the package with both <a href="https://support.10xgenomics.com/genome-exome/software/pipelines/latest/what-is-long-ranger">LongRanger</a> and <a href="https://support.10xgenomics.com/de-novo-assembly/software/overview/welcome">SuperNova</a> to confirm that variant identifation, phasing, and de novo assembly are supported. We also encourage users to use these simulations to aid in the development of novel algorithms. Please feel free to contact us if your pipelines require additional features.
+
 ## Getting Started
 
 ```
@@ -8,14 +12,14 @@ perl simulateLinkedReads.pl -r genome.fa -p folder/run1
 ```
 
 ## Tips to run
-1. 'Molecule' and 'Partition' are glossary from 10x Genomics and synonym to 'Fragment' and 'Pool'.
+1. Please review the <a href-"https://www.10xgenomics.com/">10X Genomics</a> website for an overivew of the sequencing process and the definitions of the related terms. Note that 'Molecule' and 'Partition' are synonymous to 'Fragment' and 'Pool'.
 2. The simulated reads were tested to be compaitible with LongRanger and SuperNova.
 3. The default parameters are similar to 10x's standard protocal for human genome.
-4. Set -z to run DWGSIM in parallel. For human genome, each copy of DWGSIM takes 4GB memory. Set -z to the number of available cores if you have enough memory.
-5. For human genome, the memory consumption peak at 48GB, and takes about 5 hours to finish with default parameters.
+4. Set -z to run DWGSIM in parallel. For the human genome, each copy of DWGSIM takes 4GB memory. Set -z to the number of available cores if you have enough memory.
+5. For the human genome, the memory consumption peaks at 48GB, and takes about 5 hours to finish with default parameters.
 6. With the same output prefix `-p`, you can continue from step 4: Simulate reads using option `-u 4` with different `-f` (fragment size), `-t` (partitions to generate) and `-m` (average number of molecules per partition). This shortern the simulation from 5 hours to 1.5 hours for human.
-7. You may want to use `-o` to skip valid range check on parameters for genomes other than human, please use at your own risk, say for example, you shouldn't set `-m` to over 4700, which is the number of available barcodes, or the program will not run to the end.
-8. I hate asking users to install dependencies, thus I've included them all into the repo, but if you still run into problem, please write to me.
+7. Please use this pipeline for non-human genomes at your own risk. You may want to use `-o` to skip valid range check on parameters. You shouldn't set `-m` to over 4700, which is the number of available barcodes, or the program will not run to the end. Note that the default barcoding parameters do not perform well for small genomes (<100Mbp).
+8. I hate asking users to install dependencies, so they are included in the repo (make sure to use git clone --recursive). If you still run into problem, please write to me.
 
 
 ## Parameters
