@@ -1,0 +1,33 @@
+Welcome to DWGSIM
+
+=== Prerequisites ===
+
+If you have just cloned this repository using GIT, you must 
+initialize the SAMtools sub-module:
+ git submodule init
+ git submodule update
+You should now have the SAMtools-compatible version checked
+out in the samtools sub-directory.
+
+=== Building DWGSIM ===
+
+To build DWGSIM, execute the following commands:
+ make
+
+To install DWGSIM, after building, copy the following binaries
+to their appropriate installation directories:
+ dwgsim
+ dwgsim_eval
+ dwgims_pileup_eval.pl
+
+=== DWGSIM with Galaxy ===
+
+DWGSIM can be incorporated into galaxy.
+NB: this is out-of-date.
+
+1. Copy over the wrapper scripts:
+  cp scripts/galaxy/dwgsim_wrapper.* galaxy-dist/tools/sr_mapping
+2. Add to the list of available tools.
+  2a. Open galaxy-dist/tool_conf.xml 
+  2b. At the end of the NGS: mapping section, add the following:
+    <tool file="sr_mapping/dwgsim_wrapper.xml" />
