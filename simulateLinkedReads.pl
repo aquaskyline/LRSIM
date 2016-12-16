@@ -52,11 +52,11 @@ my $amazingGrace = 0;
 my %fnToBeUnlinkAtExit = ();
 sub signal_handler
 {
-  &log("Caught Cntl-C, cleaning up and exiting ...");
+  &Log("Caught Cntl-C, cleaning up and exiting ...");
   if(not $amazingGrace) {foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") || warn "unable to delete $_ at exit\n"; }}
   die;
 }
-sub signal_handler_wait { &log("Caught Cntl-C, but critical step is in progress, please wait a moment."); }
+sub signal_handler_wait { &Log("Caught Cntl-C, but critical step is in progress, please wait a moment."); }
 $SIG{INT} = $SIG{TERM} = \&signal_handler;
 END { if(not $amazingGrace) { foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") || warn "unable to delete $_ at exit\n"; }}}
 # atExit end
@@ -503,7 +503,7 @@ sub main
       freeAry($readPositionsInFile);
       if(!-s "$opts{p}.$i.manifest")
       {
-        &logAndDie("$opts{p}.$i.manifest empty");
+        &LogAndDie("$opts{p}.$i.manifest empty");
       }
     }
     #my @threadPool = ();
@@ -659,7 +659,7 @@ sub LoadFaidx
 
 sub getChrSize { return ${$_[0]}{size}{$_[1]}; }
 sub getChrStart { return ${$_[0]}{acc}{$_[1]}; }
-sub GenomeCoord2Idx { &logAndDie("not defined $_[1]") unless defined ${$_[0]}{acc}{$_[1]} ;return ${$_[0]}{acc}{$_[1]} + $_[2]; }
+sub GenomeCoord2Idx { &LogAndDie("not defined $_[1]") unless defined ${$_[0]}{acc}{$_[1]} ;return ${$_[0]}{acc}{$_[1]} + $_[2]; }
 
 sub bSearch {
   my ( $elem, $list, $lowerLimit, $upperLimit ) = @_;
