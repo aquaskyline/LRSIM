@@ -1,6 +1,6 @@
 set -e
 
-g++ -std=c++11 extractReads.cpp -O3 -o extractReads
+g++ extractReads.cpp -O3 -o extractReads
 
 cd DWGSIMSrc
 make -j
@@ -19,5 +19,5 @@ cp -f SURVIVOR ../../
 cd ../../
 
 echo
-echo "Done, please run perl main.pl"
+echo "Done, please run 'perl simulateLinkedReads.pl'"
 echo

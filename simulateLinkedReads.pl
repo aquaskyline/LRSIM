@@ -36,7 +36,7 @@ use Math::Random qw(random_poisson random_uniform_integer);
 use Inline 'C';
 
 # Check dependencies
-my $absPath = dirname(abs_path($0));
+our $absPath = dirname(abs_path($0));
 die "DWGSIM executable not found\n" if  (!-e "$absPath/dwgsim");
 die "SURVIVOR executable not found\n" if  (!-e "$absPath/SURVIVOR");
 die "SURVIVOR parameter list not found\n" if  (!-e "$absPath/parameter");
@@ -44,6 +44,7 @@ die "msort executable not found\n" if  (!-e "$absPath/msort");
 die "extractReads executable not found\n" if  (!-e "$absPath/extractReads");
 die "samtools executable not found\n" if  (!-e "$absPath/samtools");
 die "fa_filter executable not found\n" if  (!-e "$absPath/faFilter.pl");
+die "default barcode list 4M-with-alts-february-2016.txt not found\n" if  (!-e "$absPath/4M-with-alts-february-2016.txt");
 # Check dependencies end
 
 # atExit
@@ -65,10 +66,10 @@ END { if(not $amazingGrace) { foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") |
 
 sub main
 {
-  our %opts = (h=>undef, o=>undef, d=>2, r=>undef, p=>undef, b=>undef, u=>99,
-              e=>"0.0001,0.002", E=>"0.0001,0.002", i=>350, s=>35, x=>600, f=>50, t=>1500, m=>10);
+  our %opts = (h=>undef, o=>undef, d=>2, r=>undef, p=>undef, b=>"$absPath/4M-with-alts-february-2016.txt", u=>99,
+              e=>"0.0001,0.0016", E=>"0.0001,0.0016", i=>350, s=>35, x=>600, f=>100, t=>1500, m=>10, z=>8);
   &usage(\%opts) if (@ARGV < 1);
-  getopts('hod:r:p:b:u:e:E:i:s:x:f:t:m:', \%opts);
+  getopts('hod:r:p:b:u:e:E:i:s:x:f:t:m:z:', \%opts);
   &usage(\%opts) if (defined $opts{h});
 
   #Check options
@@ -88,7 +89,7 @@ sub main
     die "The value of -i should be set between 350 and 400\n" if ( $opts{i} < 350 || $opts{i} > 400 );
     die "The value of -s should be set between 35 and 40\n" if ( $opts{s} < 35 || $opts{s} > 40 );
     die "The value of -x should be set between 400 and 800\n" if ( $opts{x} < 400 || $opts{x} > 800 );
-    die "The value of -f should be set between 20 and 150\n" if ( $opts{f} < 20 || $opts{f} > 150 );
+    die "The value of -f should be set between 20 and 150\n" if ( $opts{f} < 20 || $opts{f} > 300 );
     die "The value of -t should be set between 100 and 3000\n" if ( $opts{t} < 100 || $opts{t} > 3000 );
     die "The value of -m should be set between 5 and 15\n" if ( $opts{m} < 5 || $opts{m} >15 );
   }
@@ -266,7 +267,7 @@ sub main
   #Generate reads for haplotypes
   CHKPOINT3:
   {
-    my $threadsPerHaplotype = 6;
+    my $threadsPerHaplotype = $opts{z}/2;
     our $needPostprocess :shared = 0;
     our $readsPerHaplotype = int($opts{x} * 1000 * 1000 / $opts{d} * 1.5 / $threadsPerHaplotype);
     sub dwgsimGenReads
@@ -588,9 +589,10 @@ sub main
 sub usage {
   my $opts = shift @_;
   die(qq/
-    Usage:   $0 -r <reference> -p <output prefix> -b <barcodes> [options]
+    Usage:   $0 -r <reference> -p <output prefix> [options]
 
     Other options:
+    -b <string> Barcodes list
     -d <int>    Haplotypes to simulate [$$opts{d}]
     -e <float>  Per base error rate of the first read [$$opts{e}]
     -E <float>  Per base error rate of the second read [$$opts{E}]
@@ -607,6 +609,10 @@ sub usage {
                   4. Simulate reads
                   5. Sort reads extraction manifest
                   6. Extract reads
+    -z INT      # of threads to run DWGSIM [$$opts{z}]
+    -o          Disable parameter checking
+    -h          Show this help
+
     /);
 }
 

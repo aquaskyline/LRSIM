@@ -74,9 +74,9 @@ int main(int argc, char **argv)
         if(len == 0) {fprintf(stderr, "Read empty row from manifest file, program terminated\n");exit(EXIT_FAILURE);}
         buf[ strlen(buf) - 1 ] = '\0';
       } else { continue; }
-      vector<string> && ary = SplitString(buf);
+      vector<string> ary = SplitString(buf);
       if(ary.size() != 3) {fprintf(stderr, "%s, manifest file columns != 3, program terminated\n", buf);exit(EXIT_FAILURE);}
-      filePosition = stoul(ary[0]);
+      filePosition = strtoul(ary[0].c_str(), NULL, 0);
       strcpy(bcSeq, ary[1].c_str());
       strcpy(bcQual, ary[2].c_str());
     }
