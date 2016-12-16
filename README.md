@@ -1,9 +1,74 @@
-# 10xReadsSimulator
+## Getting Started
 
-To make the tool, run make.sh
+```
+git clone --recursive https://github.com/aquaskyline/10xReadsSimulator.git
+cd 10xReadsSimulator
+sh make.sh
+perl simulateLinkedReads.pl -r genome.fa -p folder/run1
+```
 
-To clean up, run clean.sh
+## Tips to run
+1. 'Molecule' and 'Partition' are glossary from 10x Genomics and synonym to 'Fragment' and 'Pool'.
+2. The simulated reads were tested to be compaitible with LongRanger and SuperNova.
+3. The default parameters are similar to 10x's standard protocal for human genome.
+4. Set -z to run DWGSIM in parallel. For human genome, each copy of DWGSIM takes 4GB memory. Set -z to the number of available cores if you have enough memory.
+5. For human genome, the memory consumption peak at 48GB, and takes about 5 hours to finish with default parameters.
+6. With the same output prefix `-p`, you can continue from step 4: Simulate reads using option `-u 4` with different `-f` (fragment size), `-t` (partitions to generate) and `-m` (average number of molecules per partition). This shortern the simulation from 5 hours to 1.5 hours for human.
+7. You may want to use `-o` to skip valid range check on parameters for genomes other than human, please use at your own risk, say for example, you shouldn't set `-m` to over 4700, which is the number of available barcodes, or the program will not run to the end.
+8. I hate asking users to install dependencies, thus I've included them all into the repo, but if you still run into problem, please write to me.
 
-Run main.pl for usage
 
+## Parameters
+```
+    Usage:   ./simulateLinkedReads.pl -r <reference> -p <output prefix> [options]
+
+    Other options:
+    -b <string> Barcodes list
+    -d <int>    Haplotypes to simulate [2]
+    -e <float>  Per base error rate of the first read [0.0001,0.0016]
+    -E <float>  Per base error rate of the second read [0.0001,0.0016]
+    -i INT      Outer distance between the two ends for pairs [350]
+    -s INT      Standard deviation of the distance for pairs [35]
+    -x INT      Number of million reads pairs in total to simulated [600]
+    -f INT      Mean molecule length in kbp [50]
+    -t INT      n*1000 partitions to generate [1500]
+    -m INT      Average # of molecules per partition [10]
+    -u INT      Continue from a step [auto]
+                  1. Variant simulation
+                  2. Build fasta index
+                  3. DWGSIM
+                  4. Simulate reads
+                  5. Sort reads extraction manifest
+                  6. Extract reads
+    -z INT      # of threads to run DWGSIM [4]
+    -o          Disable parameter checking
+    -h          Show this help
+```
+You can also modify both the length range and the number of SNPs, Indels and SVs to be simulated in file 'parameter'. The ratio of homozygous to heterzygous variant is hardcoded as 1:2.
+
+## Acknowledgement
+The simulator uses a modified version of DWGSIM originally developed by Nils Homer (nh13/DWGSIM) and SURVIVOR by Fritz Sadlezeck (fritzsedlazeck/SURVIVOR).
+
+## License
+```
+  The MIT License (MIT)
+  Copyright (c) 2016 Ruibang Luo <aquaskyline@gmail.com>
+ 
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is furnished
+  to do so, subject to the following conditions:
+ 
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+ 
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
 
