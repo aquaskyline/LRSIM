@@ -24,31 +24,44 @@ perl simulateLinkedReads.pl -r genome.fa -p folder/run1
 
 ## Parameters
 ```
-    Usage:   ./simulateLinkedReads.pl -r <reference> -p <output prefix> [options]
+  Usage:   ../../pgmT/simulateLinkedReads.pl -r <reference> -p <output prefix> [options]
 
-    Other options:
-    -b <string> Barcodes list
-    -d <int>    Haplotypes to simulate [2]
-    -e <float>  Per base error rate of the first read [0.0001,0.0016]
-    -E <float>  Per base error rate of the second read [0.0001,0.0016]
-    -i INT      Outer distance between the two ends for pairs [350]
-    -s INT      Standard deviation of the distance for pairs [35]
-    -x INT      Number of million reads pairs in total to simulated [600]
-    -f INT      Mean molecule length in kbp [50]
-    -t INT      n*1000 partitions to generate [1500]
-    -m INT      Average # of molecules per partition [10]
-    -u INT      Continue from a step [auto]
-                  1. Variant simulation
-                  2. Build fasta index
-                  3. DWGSIM
-                  4. Simulate reads
-                  5. Sort reads extraction manifest
-                  6. Extract reads
-    -z INT      # of threads to run DWGSIM [4]
-    -o          Disable parameter checking
-    -h          Show this help
+  Reference genome and variants:
+  -d INT      Haplotypes to simulate [2]
+  -1 INT      1 SNP per INT base pairs [1000]
+  -2 INT      Minimum length of Indels  [1]
+  -3 INT      Maximum length of Indels  [50]
+  -4 INT      # of Indels  [1000]
+  -5 INT      Minimum length of Duplications, Translocations and Inversions [1000]
+  -6 INT      Maximum length of Duplications, Translocations and Inversions [10000]
+  -7 INT      # of Duplications, # of Translocations and # of Inversions [100]
+
+  Illumina reads characteristics:
+  -e FLOAT    Per base error rate of the first read [0.0001,0.0016]
+  -E FLOAT    Per base error rate of the second read [0.0001,0.0016]
+  -i INT      Outer distance between the two ends for pairs [350]
+  -s INT      Standard deviation of the distance for pairs [35]
+
+  Linked reads parameters:
+  -b STRING   Barcodes list
+  -x INT      # million reads pairs in total to simulated [600]
+  -f INT      Mean molecule length in kbp [100]
+  -t INT      n*1000 partitions to generate [1500]
+  -m INT      Average # of molecules per partition [10]
+
+  Miscellaneous:
+  -u INT      Continue from a step [auto]
+  1. Variant simulation
+  2. Build fasta index
+  3. DWGSIM
+  4. Simulate reads
+  5. Sort reads extraction manifest
+  6. Extract reads
+  -z INT      # of threads to run DWGSIM [8]
+  -o          Disable parameter checking
+  -h          Show this help
 ```
-You can also modify both the length range and the number of SNPs, Indels and SVs to be simulated in file 'parameter'. The ratio of homozygous to heterzygous variant is hardcoded as 1:2.
+The ratio of homozygous to heterzygous variant is hardcoded as 1:2.
 
 ## Acknowledgement
 The simulator uses a modified version of DWGSIM originally developed by Nils Homer (nh13/DWGSIM) and SURVIVOR by Fritz Sadlezeck (fritzsedlazeck/SURVIVOR).

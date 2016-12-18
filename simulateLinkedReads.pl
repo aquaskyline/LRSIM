@@ -39,7 +39,6 @@ use Inline 'C';
 our $absPath = dirname(abs_path($0));
 die "DWGSIM executable not found\n" if  (!-e "$absPath/dwgsim");
 die "SURVIVOR executable not found\n" if  (!-e "$absPath/SURVIVOR");
-die "SURVIVOR parameter list not found\n" if  (!-e "$absPath/parameter");
 die "msort executable not found\n" if  (!-e "$absPath/msort");
 die "extractReads executable not found\n" if  (!-e "$absPath/extractReads");
 die "samtools executable not found\n" if  (!-e "$absPath/samtools");
@@ -48,17 +47,17 @@ die "default barcode list 4M-with-alts-february-2016.txt not found\n" if  (!-e "
 # Check dependencies end
 
 # atExit
-my $amazingGrace = 0;
+my $amazingGrace = 1;
 my %fnToBeUnlinkAtExit = ();
 sub signal_handler
 {
   &Log("Caught Cntl-C, cleaning up and exiting ...");
-  if(not $amazingGrace) {foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") || warn "unable to delete $_ at exit\n"; }}
+  if(not $amazingGrace) {foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") || warn "unable to delete $_ at exit\n"; } }
   die;
 }
 sub signal_handler_wait { &Log("Caught Cntl-C, but critical step is in progress, please wait a moment."); }
 $SIG{INT} = $SIG{TERM} = \&signal_handler;
-END { if(not $amazingGrace) { foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") || warn "unable to delete $_ at exit\n"; }}}
+END { if(not $amazingGrace) { foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") || warn "unable to delete $_ at exit\n"; } } }
 # atExit end
 
 &main;
@@ -67,7 +66,8 @@ END { if(not $amazingGrace) { foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") |
 sub main
 {
   our %opts = (h=>undef, o=>undef, d=>2, r=>undef, p=>undef, b=>"$absPath/4M-with-alts-february-2016.txt", u=>99,
-              e=>"0.0001,0.0016", E=>"0.0001,0.0016", i=>350, s=>35, x=>600, f=>100, t=>1500, m=>10, z=>8);
+               e=>"0.0001,0.0016", E=>"0.0001,0.0016", i=>350, s=>35, x=>600, f=>100, t=>1500, m=>10, z=>8,
+               1=>1000, 2=>1, 3=>50, 4=>1000, 5=>1000, 6=>10000, 7=>100);
   &usage(\%opts) if (@ARGV < 1);
   getopts('hod:r:p:b:u:e:E:i:s:x:f:t:m:z:', \%opts);
   &usage(\%opts) if (defined $opts{h});
@@ -167,7 +167,8 @@ sub main
     our $survivorPostprocess = 0;
     if(-e "$opts{p}.survivorA.fasta" && -e "$opts{p}.survivorB.fasta" &&
        -e "$opts{p}.survivor.hetA.insertions.fa" && -e "$opts{p}.survivor.hetB.insertions.fa" && -e "$opts{p}.survivor.homAB.insertions.fa" &&
-       -e "$opts{p}.survivor.hetA.bed" && -e "$opts{p}.survivor.hetB.bed" && -e "$opts{p}.survivor.homAB.bed")
+       -e "$opts{p}.survivor.hetA.bed" && -e "$opts{p}.survivor.hetB.bed" && -e "$opts{p}.survivor.homAB.bed" &&
+       -e "$opts{p}.survivor.parameter")
     { &Log("SURVIVOR done already"); }
     else
     {
@@ -180,9 +181,37 @@ sub main
       ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.hetA.bed"};
       ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.hetB.bed"};
       ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.homAB.bed"};
+      ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.parameter"};
       ++$survivorPostprocess;
-      &Log("Running: $absPath/SURVIVOR 0 $opts{r} $absPath/parameter 0 $opts{p}.survivor 1000");
-      system("$absPath/SURVIVOR 0 $opts{r} $absPath/parameter 0 $opts{p}.survivor 1000 1>/dev/null");
+      open my $parameterFH, ">$opts{p}.survivor.parameter" or &LogAndDie("$opts{p}.survivor.parameter not found");
+      print $parameterFH <<PARAMETER;
+PARAMETER FILE: DO JUST MODIFY THE VALUES AND KEEP THE SPACES!
+DUPLICATION_minimum_length: $opts{5}
+DUPLICATION_maximum_length: $opts{6}
+DUPLICATION_number: $opts{7}
+INDEL_minimum_length: $opts{2}
+INDEL_maximum_length: $opts{3}
+INDEL_number: $opts{4}
+TRANSLOCATION_minimum_length: $opts{5}
+TRANSLOCATION_maximum_length: $opts{6}
+TRANSLOCATION_number: $opts{7}
+INVERSION_minimum_length: $opts{5}
+INVERSION_maximum_length: $opts{6}
+INVERSION_number: $opts{7}
+INV_del_minimum_length: $opts{5}
+INV_del_maximum_length: $opts{6}
+INV_del_number: $opts{7}
+INV_dup_minimum_length: $opts{5}
+INV_dup_maximum_length: $opts{6}
+INV_dup_number: $opts{7}
+INTRA_TRANS_minimum_length: $opts{5}
+INTRA_TRANS_maximum_length: $opts{6}
+INTRA_TRANS_number: $opts{7}
+PARAMETER
+      close $parameterFH;
+
+      &Log("Running: $absPath/SURVIVOR 0 $opts{r} $opts{p}.survivor.parameter 0 $opts{p}.survivor $opts{1}");
+      system("$absPath/SURVIVOR 0 $opts{r} $opts{p}.survivor.parameter 0 $opts{p}.survivor $opts{1} 1>/dev/null");
       if(!-s "$opts{p}.survivorA.fasta")
       { &LogAndDie("SURVIVOR error on missing $opts{p}.survivorA.fasta"); }
       if(!-s "$opts{p}.survivor.hetA.insertions.fa")
@@ -197,6 +226,7 @@ sub main
       delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.hetA.bed"};
       delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.hetB.bed"};
       delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.homAB.bed"};
+      delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.parameter"};
       &Log("SURVIVOR end");
     }
     for(my $i = 0; $i < $opts{d}; ++$i)
@@ -436,8 +466,6 @@ sub main
 
         my $numberOfMolecules = &PoissonMoleculePerPartition($opts{m});
         #&Log("numberOfMolecules: $numberOfMolecules");
-        my $readsToExtract = $readsPerMolecule;
-        #&Log("readsToExtract: $readsToExtract");
         for(my $j = 0; $j < $numberOfMolecules; ++$j)
         {
           #Pick a starting position
@@ -445,6 +473,8 @@ sub main
           #&Log("startingPosition: $startingPosition");
           #Pick a fragment size
           my $moleculeSize  = &PoissonMoleculeSize($opts{f}*1000);
+          my $readsToExtract = int($readsPerMolecule * $moleculeSize / ($opts{f}*1000) + 0.4999);
+          #&Log("readsToExtract: $readsToExtract");
 
           #Check and align to boundary
           my $lowerBoundary; my $upperBoundary;
@@ -591,17 +621,30 @@ sub usage {
   die(qq/
     Usage:   $0 -r <reference> -p <output prefix> [options]
 
-    Other options:
-    -b <string> Barcodes list
-    -d <int>    Haplotypes to simulate [$$opts{d}]
-    -e <float>  Per base error rate of the first read [$$opts{e}]
-    -E <float>  Per base error rate of the second read [$$opts{E}]
+    Reference genome and variants:
+    -d INT      Haplotypes to simulate [$$opts{d}]
+    -1 INT      1 SNP per INT base pairs [$$opts{1}]
+    -2 INT      Minimum length of Indels  [$$opts{2}]
+    -3 INT      Maximum length of Indels  [$$opts{3}]
+    -4 INT      # of Indels  [$$opts{4}]
+    -5 INT      Minimum length of Duplications, Translocations and Inversions [$$opts{5}]
+    -6 INT      Maximum length of Duplications, Translocations and Inversions [$$opts{6}]
+    -7 INT      # of Duplications, # of Translocations and # of Inversions [$$opts{7}]
+
+    Illumina reads characteristics:
+    -e FLOAT    Per base error rate of the first read [$$opts{e}]
+    -E FLOAT    Per base error rate of the second read [$$opts{E}]
     -i INT      Outer distance between the two ends for pairs [$$opts{i}]
     -s INT      Standard deviation of the distance for pairs [$$opts{s}]
-    -x INT      Number of million reads pairs in total to simulated [$$opts{x}]
+
+    Linked reads parameters:
+    -b STRING   Barcodes list
+    -x INT      # million reads pairs in total to simulated [$$opts{x}]
     -f INT      Mean molecule length in kbp [$$opts{f}]
     -t INT      n*1000 partitions to generate [$$opts{t}]
     -m INT      Average # of molecules per partition [$$opts{m}]
+
+    Miscellaneous:
     -u INT      Continue from a step [auto]
                   1. Variant simulation
                   2. Build fasta index
