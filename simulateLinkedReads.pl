@@ -47,7 +47,7 @@ die "default barcode list 4M-with-alts-february-2016.txt not found\n" if  (!-e "
 # Check dependencies end
 
 # atExit
-my $amazingGrace = 1;
+my $amazingGrace = 0;
 my %fnToBeUnlinkAtExit = ();
 sub signal_handler
 {
@@ -69,7 +69,7 @@ sub main
                e=>"0.0001,0.0016", E=>"0.0001,0.0016", i=>350, s=>35, x=>600, f=>100, t=>1500, m=>10, z=>8,
                1=>1000, 2=>1, 3=>50, 4=>1000, 5=>1000, 6=>10000, 7=>100);
   &usage(\%opts) if (@ARGV < 1);
-  getopts('hod:r:p:b:u:e:E:i:s:x:f:t:m:z:', \%opts);
+  getopts('hod:r:p:b:u:e:E:i:s:x:f:t:m:z:1:2:3:4:5:6:7:', \%opts);
   &usage(\%opts) if (defined $opts{h});
 
   #Check options
@@ -212,11 +212,11 @@ PARAMETER
 
       &Log("Running: $absPath/SURVIVOR 0 $opts{r} $opts{p}.survivor.parameter 0 $opts{p}.survivor $opts{1}");
       system("$absPath/SURVIVOR 0 $opts{r} $opts{p}.survivor.parameter 0 $opts{p}.survivor $opts{1} 1>/dev/null");
-      if(!-s "$opts{p}.survivorA.fasta")
+      if(!-e "$opts{p}.survivorA.fasta")
       { &LogAndDie("SURVIVOR error on missing $opts{p}.survivorA.fasta"); }
-      if(!-s "$opts{p}.survivor.hetA.insertions.fa")
+      if(!-e "$opts{p}.survivor.hetA.insertions.fa")
       { &LogAndDie("SURVIVOR error on missing $opts{p}.survivorA.insertions.fa"); }
-      if(!-s "$opts{p}.survivor.hetA.bed")
+      if(!-e "$opts{p}.survivor.hetA.bed")
       { &LogAndDie("SURVIVOR error on missing $opts{p}.survivorA.bed"); }
       delete $fnToBeUnlinkAtExit{"$opts{p}.survivorA.fasta"};
       delete $fnToBeUnlinkAtExit{"$opts{p}.survivorB.fasta"};

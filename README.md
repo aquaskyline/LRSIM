@@ -8,7 +8,8 @@ This package simulates whole genome sequencing using 10X Genomics Linked Read te
 git clone --recursive https://github.com/aquaskyline/10xReadsSimulator.git
 cd 10xReadsSimulator
 sh make.sh
-perl simulateLinkedReads.pl -r genome.fa -p folder/run1
+cd test
+sh test.sh
 ```
 
 ## Tips to run
