@@ -1,4 +1,4 @@
-## Simulator for 10X Genomics Linked Reads
+## Simulator for Linked Reads
 
 This package simulates whole genome sequencing using 10X Genomics Linked Read technology.  We have attempted to realistically capture all of the relevant steps of the 10X protocol so that it can be used to faithfully evaluate linked read sequencing of different genomes, mutation rates, input libraries, and short read sequencing conditions in silico. We have tested the package with both <a href="https://support.10xgenomics.com/genome-exome/software/pipelines/latest/what-is-long-ranger">LongRanger</a> and <a href="https://support.10xgenomics.com/de-novo-assembly/software/overview/welcome">SuperNova</a> to confirm that variant identifation, phasing, and de novo assembly are supported. We also encourage users to use these simulations to aid in the development of novel algorithms. Please feel free to contact us if your pipelines require additional features.
 
