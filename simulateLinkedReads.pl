@@ -73,7 +73,7 @@ sub main
   &usage(\%opts) if (defined $opts{h});
 
   #Check options
-  die "Number of haplotypes should be between 1 to 3\n" if ($opts{d} < 1 || $opts{d} > 3); #3 is a soft limit
+  die "Number of haplotypes should be between 1 to 3\n" if ($opts{d} < 1 || $opts{d} > 3);
   die "Please provide a reference genome with -r\n" if (not defined $opts{r});
   die "Please provide a output prefix with -p\n" if (not defined $opts{p});
   die "Output prefix (-p) cannot end with a /\n" if ($opts{p} =~ /\/$/);
@@ -97,7 +97,7 @@ sub main
   #Check options end
 
   #Global variables
-  &Log("$opts{p}.status"); #Initializing Log routine
+  &Log("$opts{p}.status"); #Initialize Log routine
   our %barcodeErrorRateFromMismatchObv1 = (
   0=>{ "A"=>0.00243200183210607, "C"=>0.00265226825720049, "G"=>0.00238252487266703, "T"=>0.00247859241604291},
   1=>{ "A"=>9.84518532280806e-05,"C"=>0.000105418767099898,"G"=>0.00012024540587624, "T"=>0.000149312364560738},
@@ -161,7 +161,7 @@ sub main
   #Goto checkpoint end
 
   #Generate copies of haplotypes
-  #Caveat: SURVIVOR supports only two haplotypes
+  #TODO: SURVIVOR now supports only two haplotypes
   CHKPOINT1:
   {
     our $survivorPostprocess = 0;
@@ -308,8 +308,6 @@ PARAMETER
       my $readLenghtWithoutBarcode = 135;
       my $readLenghtWithBarcode = 151;
       ++$needPostprocess;
-      # dwgsim command
-      # ./dwgsim -N 1000 -e 0.02 -E 0.02 -d 350 -s 35 -1 151 -2 151 -S 0 -c 0 ref.fa ./test
       if(-e "$opts{p}.dwgsim.$i.12.fastq")
       { &Log("DWGSIM round $i done already"); return; }
       &Log("DWGSIM round $i thread $j start");
@@ -373,9 +371,9 @@ PARAMETER
     &Log("Load barcodes end");
     #Load barcodes end
 
-    # depthPerMol * molLength * #molPerPartition * Partitions = reads * length
-    # ? * 50k * 10 * 1.5M = 1000M * 270
-    # ? = 0.36x
+    # depthPerMol * molLength * #molPerPartition * Partitions = readsPairs * length
+    # ? * 50k * 10 * 1.5M = 600M * 270
+    # ? = 0.216x
     # readsPerParition = depthPerMol * molLength * #molPerPartition / length
     # ? = 0.36x * 50k * 10 / 270
     # ? = 666.6
@@ -536,6 +534,7 @@ PARAMETER
         &LogAndDie("$opts{p}.$i.manifest empty");
       }
     }
+    # Some old version of Perl will run into segmentation fault if using multithread here
     #my @threadPool = ();
     for(my $i = 0; $i < $opts{d}; ++$i)
     {
@@ -612,7 +611,7 @@ PARAMETER
     &Log("Extract reads end");
   }
   #Extract reads done
-  
+
   0;
 }
 
