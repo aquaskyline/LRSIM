@@ -373,10 +373,10 @@ PARAMETER
 
     # depthPerMol * molLength * #molPerPartition * Partitions = readsPairs * length
     # ? * 50k * 10 * 1.5M = 600M * 270
-    # ? = 0.216x
+    # ? = 0.108x
     # readsPerParition = depthPerMol * molLength * #molPerPartition / length
-    # ? = 0.36x * 50k * 10 / 270
-    # ? = 666.6
+    # ? = 0.216x * 100k * 10 / 270
+    # ? = 400
     #
     our $readsPerMolecule = int(0.499 + ($opts{x} * 1000 * 1000) / ($opts{t} * 1000 / $opts{d}) / $opts{m} / $opts{d});
     &Log("readPairsPerMolecule: $readsPerMolecule");
