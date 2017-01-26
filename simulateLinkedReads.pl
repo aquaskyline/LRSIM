@@ -21,8 +21,8 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use File::Basename;
-use lib "./lib";
-use lib dirname($0)."/lib";
+#use lib "./lib";
+#use lib dirname($0)."/lib";
 use strict;
 use warnings;
 use feature 'state';
