@@ -67,9 +67,9 @@ sub main
 {
   our %opts = (h=>undef, o=>undef, d=>2, r=>undef, p=>undef, b=>"$absPath/4M-with-alts-february-2016.txt", u=>99,
                e=>"0.0001,0.0016", E=>"0.0001,0.0016", i=>350, s=>35, x=>600, f=>100, t=>1500, m=>10, z=>8,
-               1=>1000, 2=>1, 3=>50, 4=>1000, 5=>1000, 6=>10000, 7=>100);
+               1=>1000, 2=>1, 3=>50, 4=>1000, 5=>1000, 6=>10000, 7=>100, 8=>1000, 9=>10000, 0=>100);
   &usage(\%opts) if (@ARGV < 1);
-  getopts('hod:r:p:b:u:e:E:i:s:x:f:t:m:z:1:2:3:4:5:6:7:', \%opts);
+  getopts('hod:r:p:b:u:e:E:i:s:x:f:t:m:z:1:2:3:4:5:6:7:8:9:0:', \%opts);
   &usage(\%opts) if (defined $opts{h});
 
   #Check options
@@ -86,12 +86,12 @@ sub main
   foreach(split /,/, $opts{E}) { die "The value of -E should be set between 0 and 1\n" if ( $_ < 0 || $_ > 1 ); }
   if(not defined $opts{o})
   {
-    die "The value of -i should be set between 350 and 400\n" if ( $opts{i} < 350 || $opts{i} > 400 );
-    die "The value of -s should be set between 35 and 40\n" if ( $opts{s} < 35 || $opts{s} > 40 );
-    die "The value of -x should be set between 400 and 800\n" if ( $opts{x} < 400 || $opts{x} > 800 );
-    die "The value of -f should be set between 20 and 150\n" if ( $opts{f} < 20 || $opts{f} > 300 );
-    die "The value of -t should be set between 100 and 3000\n" if ( $opts{t} < 100 || $opts{t} > 3000 );
-    die "The value of -m should be set between 5 and 15\n" if ( $opts{m} < 5 || $opts{m} >15 );
+    die "For human genome, the value of -i should be set between 350 and 400, use -o to skip parameter check.\n" if ( $opts{i} < 350 || $opts{i} > 400 );
+    die "For human genome, the value of -s should be set between 35 and 40, use -o to skip parameter check.\n" if ( $opts{s} < 35 || $opts{s} > 40 );
+    die "For human genome, the value of -x should be set between 400 and 800, use -o to skip parameter check.\n" if ( $opts{x} < 400 || $opts{x} > 800 );
+    die "For human genome, the value of -f should be set between 20 and 150, use -o to skip parameter check.\n" if ( $opts{f} < 20 || $opts{f} > 300 );
+    die "For human genome, the value of -t should be set between 100 and 3000, use -o to skip parameter check.\n" if ( $opts{t} < 100 || $opts{t} > 3000 );
+    die "For human genome, the value of -m should be set between 5 and 15, use -o to skip parameter check.\n" if ( $opts{m} < 5 || $opts{m} >15 );
   }
   warn "$opts{p}.status exists\n" if (-e "$opts{p}.status");
   #Check options end
@@ -183,6 +183,9 @@ sub main
       ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.homAB.bed"};
       ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.parameter"};
       ++$survivorPostprocess;
+      $opts{3}++ if $opts{3} == $opts{2};
+      $opts{6}++ if $opts{6} == $opts{5};
+      $opts{9}++ if $opts{9} == $opts{8};
       open my $parameterFH, ">$opts{p}.survivor.parameter" or &LogAndDie("$opts{p}.survivor.parameter not found");
       print $parameterFH <<PARAMETER;
 PARAMETER FILE: DO JUST MODIFY THE VALUES AND KEEP THE SPACES!
@@ -192,21 +195,21 @@ DUPLICATION_number: $opts{7}
 INDEL_minimum_length: $opts{2}
 INDEL_maximum_length: $opts{3}
 INDEL_number: $opts{4}
-TRANSLOCATION_minimum_length: $opts{5}
-TRANSLOCATION_maximum_length: $opts{6}
-TRANSLOCATION_number: $opts{7}
+TRANSLOCATION_minimum_length: $opts{8}
+TRANSLOCATION_maximum_length: $opts{9}
+TRANSLOCATION_number: $opts{0}
 INVERSION_minimum_length: $opts{5}
 INVERSION_maximum_length: $opts{6}
 INVERSION_number: $opts{7}
-INV_del_minimum_length: $opts{5}
-INV_del_maximum_length: $opts{6}
-INV_del_number: $opts{7}
-INV_dup_minimum_length: $opts{5}
-INV_dup_maximum_length: $opts{6}
-INV_dup_number: $opts{7}
-INTRA_TRANS_minimum_length: $opts{5}
-INTRA_TRANS_maximum_length: $opts{6}
-INTRA_TRANS_number: $opts{7}
+INV_del_minimum_length: 1000
+INV_del_maximum_length: 10000
+INV_del_number: 0
+INV_dup_minimum_length: 1000
+INV_dup_maximum_length: 10000
+INV_dup_number: 0
+INTRA_TRANS_minimum_length: 1000
+INTRA_TRANS_maximum_length: 10000
+INTRA_TRANS_number: 0
 PARAMETER
       close $parameterFH;
 
@@ -626,9 +629,12 @@ sub usage {
     -2 INT      Minimum length of Indels  [$$opts{2}]
     -3 INT      Maximum length of Indels  [$$opts{3}]
     -4 INT      # of Indels  [$$opts{4}]
-    -5 INT      Minimum length of Duplications, Translocations and Inversions [$$opts{5}]
-    -6 INT      Maximum length of Duplications, Translocations and Inversions [$$opts{6}]
-    -7 INT      # of Duplications, # of Translocations and # of Inversions [$$opts{7}]
+    -5 INT      Minimum length of Duplications and Inversions [$$opts{5}]
+    -6 INT      Maximum length of Duplications and Inversions [$$opts{6}]
+    -7 INT      # of Duplications and # of Inversions [$$opts{7}]
+    -8 INT      Minimum length of Translocations [$$opts{5}]
+    -9 INT      Maximum length of Translocations [$$opts{6}]
+    -0 INT      # of Translocations [$$opts{7}]
 
     Illumina reads characteristics:
     -e FLOAT    Per base error rate of the first read [$$opts{e}]
@@ -809,7 +815,7 @@ void freeAry(long pptr)
   free(ptr);
 }
 
-#define CHK_PREV_SLOT_LIMIT (10*AMP_ON_SLOTS)
+#define CHK_PREV_SLOT_LIMIT (3000*AMP_ON_SLOTS)
 int writeToPos(long pptr, long pos, long toWrite)
 {
   size_t* ptr = (size_t*)pptr;
