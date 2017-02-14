@@ -65,21 +65,38 @@ END { if(not $amazingGrace) { foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") |
 
 sub main
 {
-  our %opts = (h=>undef, o=>undef, d=>2, r=>undef, p=>undef, b=>"$absPath/4M-with-alts-february-2016.txt", u=>99,
+  our %opts = (h=>undef, o=>undef, g=>undef, d=>2, r=>undef, p=>undef, b=>"$absPath/4M-with-alts-february-2016.txt", u=>99,
                e=>"0.0001,0.0016", E=>"0.0001,0.0016", i=>350, s=>35, x=>600, f=>100, t=>1500, m=>10, z=>8,
                1=>1000, 2=>1, 3=>50, 4=>1000, 5=>1000, 6=>10000, 7=>100, 8=>1000, 9=>10000, 0=>100);
   &usage(\%opts) if (@ARGV < 1);
-  getopts('hod:r:p:b:u:e:E:i:s:x:f:t:m:z:1:2:3:4:5:6:7:8:9:0:', \%opts);
+  getopts('hog:d:r:p:b:u:e:E:i:s:x:f:t:m:z:1:2:3:4:5:6:7:8:9:0:', \%opts);
   &usage(\%opts) if (defined $opts{h});
 
   #Check options
   die "Number of haplotypes should be between 1 to 3\n" if ($opts{d} < 1 || $opts{d} > 3);
-  die "Please provide a reference genome with -r\n" if (not defined $opts{r});
+  if(defined $opts{g})
+  {
+    my @hapFNs = split /,/, $opts{g};
+    foreach my $fn (@hapFNs)
+    {
+      die "Haploid FASTA $fn not exist\n" if (!-s "$fn");
+      #die "Reference genome index $fn.fai not exist\n" if (!-s "$fn.fai");
+    }
+    $opts{d} = scalar(@hapFNs);
+    $opts{r} = undef;
+  }
+  elsif(defined $opts{r})
+  {
+    die "Reference genome $opts{r} not exist\n" if (!-s "$opts{r}");
+    #die "Reference genome index $opts{r}.fai not exist\n" if (!-s "$opts{r}.fai");
+  }
+  else
+  {
+    die "Please provide a reference genome with -r, or haplotypes with -g\n";
+  }
   die "Please provide a output prefix with -p\n" if (not defined $opts{p});
   die "Output prefix (-p) cannot end with a /\n" if ($opts{p} =~ /\/$/);
   die "Please provide a barcodes file with -b\n" if (not defined $opts{b});
-  die "Reference genome $opts{r} not exist\n" if (!-s "$opts{r}");
-  die "Reference genome index $opts{r}.fai not exist\n" if (!-s "$opts{r}.fai");
   die "Barcodes file $opts{b} not exist\n" if (!-s "$opts{b}");
   die "Please provide a output prefix for this read simulation job with -p\n" if (not defined $opts{p});
   foreach(split /,/, $opts{e}) { die "The value of -e should be set between 0 and 1\n" if ( $_ < 0 || $_ > 1 ); }
@@ -163,30 +180,46 @@ sub main
   #Generate copies of haplotypes
   #TODO: SURVIVOR now supports only two haplotypes
   CHKPOINT1:
+  if(defined $opts{g})
   {
+    my @hapFNs = split /,/, $opts{g};
+    my $i=0;
+    { &Log("Haplotypes input mode enabled"); }
+    foreach my $fn (@hapFNs)
+    {
+      ++$fnToBeUnlinkAtExit{"$opts{p}.hap.$i.fasta"};
+      { &Log("Copying $fn to $opts{p}.hap.$i.fasta"); }
+      system("cp -f $fn $opts{p}.hap.$i.fasta");
+      ++$i;
+      delete $fnToBeUnlinkAtExit{"$opts{p}.hap.$i.fasta"};
+    }
+  }
+  elsif(defined $opts{r})
+  {
+    { &Log("Variant simulation mode enabled"); }
     our $survivorPostprocess = 0;
-    if(-e "$opts{p}.survivorA.fasta" && -e "$opts{p}.survivorB.fasta" &&
-       -e "$opts{p}.survivor.hetA.insertions.fa" && -e "$opts{p}.survivor.hetB.insertions.fa" && -e "$opts{p}.survivor.homAB.insertions.fa" &&
-       -e "$opts{p}.survivor.hetA.bed" && -e "$opts{p}.survivor.hetB.bed" && -e "$opts{p}.survivor.homAB.bed" &&
-       -e "$opts{p}.survivor.parameter")
+    if(-e "$opts{p}.hapA.fasta" && -e "$opts{p}.hapB.fasta" &&
+       -e "$opts{p}.hap.hetA.insertions.fa" && -e "$opts{p}.hap.hetB.insertions.fa" && -e "$opts{p}.hap.homAB.insertions.fa" &&
+       -e "$opts{p}.hap.hetA.bed" && -e "$opts{p}.hap.hetB.bed" && -e "$opts{p}.hap.homAB.bed" &&
+       -e "$opts{p}.hap.parameter")
     { &Log("SURVIVOR done already"); }
     else
     {
       &Log("SURVIVOR start");
-      ++$fnToBeUnlinkAtExit{"$opts{p}.survivorA.fasta"};
-      ++$fnToBeUnlinkAtExit{"$opts{p}.survivorB.fasta"};
-      ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.hetA.insertions.fa"};
-      ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.hetB.insertions.fa"};
-      ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.homAB.insertions.fa"};
-      ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.hetA.bed"};
-      ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.hetB.bed"};
-      ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.homAB.bed"};
-      ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.parameter"};
+      ++$fnToBeUnlinkAtExit{"$opts{p}.hapA.fasta"};
+      ++$fnToBeUnlinkAtExit{"$opts{p}.hapB.fasta"};
+      ++$fnToBeUnlinkAtExit{"$opts{p}.hap.hetA.insertions.fa"};
+      ++$fnToBeUnlinkAtExit{"$opts{p}.hap.hetB.insertions.fa"};
+      ++$fnToBeUnlinkAtExit{"$opts{p}.hap.homAB.insertions.fa"};
+      ++$fnToBeUnlinkAtExit{"$opts{p}.hap.hetA.bed"};
+      ++$fnToBeUnlinkAtExit{"$opts{p}.hap.hetB.bed"};
+      ++$fnToBeUnlinkAtExit{"$opts{p}.hap.homAB.bed"};
+      ++$fnToBeUnlinkAtExit{"$opts{p}.hap.parameter"};
       ++$survivorPostprocess;
       $opts{3}++ if $opts{3} == $opts{2};
       $opts{6}++ if $opts{6} == $opts{5};
       $opts{9}++ if $opts{9} == $opts{8};
-      open my $parameterFH, ">$opts{p}.survivor.parameter" or &LogAndDie("$opts{p}.survivor.parameter not found");
+      open my $parameterFH, ">$opts{p}.hap.parameter" or &LogAndDie("$opts{p}.hap.parameter not found");
       print $parameterFH <<PARAMETER;
 PARAMETER FILE: DO JUST MODIFY THE VALUES AND KEEP THE SPACES!
 DUPLICATION_minimum_length: $opts{5}
@@ -213,23 +246,23 @@ INTRA_TRANS_number: 0
 PARAMETER
       close $parameterFH;
 
-      &Log("Running: $absPath/SURVIVOR 0 $opts{r} $opts{p}.survivor.parameter 0 $opts{p}.survivor $opts{1}");
-      system("$absPath/SURVIVOR 0 $opts{r} $opts{p}.survivor.parameter 0 $opts{p}.survivor $opts{1} 1>/dev/null");
-      if(!-e "$opts{p}.survivorA.fasta")
-      { &LogAndDie("SURVIVOR error on missing $opts{p}.survivorA.fasta"); }
-      if(!-e "$opts{p}.survivor.hetA.insertions.fa")
-      { &LogAndDie("SURVIVOR error on missing $opts{p}.survivorA.insertions.fa"); }
-      if(!-e "$opts{p}.survivor.hetA.bed")
-      { &LogAndDie("SURVIVOR error on missing $opts{p}.survivorA.bed"); }
-      delete $fnToBeUnlinkAtExit{"$opts{p}.survivorA.fasta"};
-      delete $fnToBeUnlinkAtExit{"$opts{p}.survivorB.fasta"};
-      delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.hetA.insertions.fa"};
-      delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.hetB.insertions.fa"};
-      delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.homAB.insertions.fa"};
-      delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.hetA.bed"};
-      delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.hetB.bed"};
-      delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.homAB.bed"};
-      delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.parameter"};
+      &Log("Running: $absPath/SURVIVOR 0 $opts{r} $opts{p}.hap.parameter 0 $opts{p}.hap $opts{1}");
+      system("$absPath/SURVIVOR 0 $opts{r} $opts{p}.hap.parameter 0 $opts{p}.hap $opts{1} 1>/dev/null");
+      if(!-e "$opts{p}.hapA.fasta")
+      { &LogAndDie("SURVIVOR error on missing $opts{p}.hapA.fasta"); }
+      if(!-e "$opts{p}.hap.hetA.insertions.fa")
+      { &LogAndDie("SURVIVOR error on missing $opts{p}.hapA.insertions.fa"); }
+      if(!-e "$opts{p}.hap.hetA.bed")
+      { &LogAndDie("SURVIVOR error on missing $opts{p}.hapA.bed"); }
+      delete $fnToBeUnlinkAtExit{"$opts{p}.hapA.fasta"};
+      delete $fnToBeUnlinkAtExit{"$opts{p}.hapB.fasta"};
+      delete $fnToBeUnlinkAtExit{"$opts{p}.hap.hetA.insertions.fa"};
+      delete $fnToBeUnlinkAtExit{"$opts{p}.hap.hetB.insertions.fa"};
+      delete $fnToBeUnlinkAtExit{"$opts{p}.hap.homAB.insertions.fa"};
+      delete $fnToBeUnlinkAtExit{"$opts{p}.hap.hetA.bed"};
+      delete $fnToBeUnlinkAtExit{"$opts{p}.hap.hetB.bed"};
+      delete $fnToBeUnlinkAtExit{"$opts{p}.hap.homAB.bed"};
+      delete $fnToBeUnlinkAtExit{"$opts{p}.hap.parameter"};
       &Log("SURVIVOR end");
     }
     for(my $i = 0; $i < $opts{d}; ++$i)
@@ -237,10 +270,12 @@ PARAMETER
       if($survivorPostprocess != 0)
       {
         my $aOrb = $i % 2 == 0 ? 'A': 'B';
-        system("ln $opts{p}.survivor$aOrb.fasta $opts{p}.survivor.$i.fasta");
+        system("ln $opts{p}.hap$aOrb.fasta $opts{p}.hap.$i.fasta");
       }
     }
   }
+  else
+  { die "Should never reach here."; }
   #Generate copies of haplotypes end
 
   #Build genome index
@@ -252,12 +287,12 @@ PARAMETER
       {
         $SIG{'INT'} = $SIG{'TERM'} = $SIG{'KILL'} = sub { threads->exit(); };
         my $i = shift @_;
-        if(-e "$opts{p}.survivor.$i.clean.fasta")
+        if(-e "$opts{p}.hap.$i.clean.fasta")
         { &Log("faFilter round $i done already"); return; }
-        &Log("$absPath/faFilter.pl $opts{p}.survivor.$i.fasta 0 > $opts{p}.survivor.$i.clean.fasta");
-        ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.$i.clean.fasta"};
-        system("$absPath/faFilter.pl $opts{p}.survivor.$i.fasta 0 > $opts{p}.survivor.$i.clean.fasta");
-        delete @fnToBeUnlinkAtExit{"$opts{p}.survivor.$i.clean.fasta"};
+        &Log("$absPath/faFilter.pl $opts{p}.hap.$i.fasta 0 > $opts{p}.hap.$i.clean.fasta");
+        ++$fnToBeUnlinkAtExit{"$opts{p}.hap.$i.clean.fasta"};
+        system("$absPath/faFilter.pl $opts{p}.hap.$i.fasta 0 > $opts{p}.hap.$i.clean.fasta");
+        delete @fnToBeUnlinkAtExit{"$opts{p}.hap.$i.clean.fasta"};
       }
       my @threadPool = ();
       for(my $i = 0; $i < $opts{d}; ++$i)
@@ -275,12 +310,12 @@ PARAMETER
       {
         $SIG{'INT'} = $SIG{'TERM'} = $SIG{'KILL'} = sub { threads->exit(); };
         my $i = shift @_;
-        if(-e "$opts{p}.survivor.$i.clean.fasta.fai")
+        if(-e "$opts{p}.hap.$i.clean.fasta.fai")
         { &Log("samtools faidx round $i done already"); return; }
-        &Log("$absPath/samtools faidx $opts{p}.survivor.$i.clean.fasta");
-        ++$fnToBeUnlinkAtExit{"$opts{p}.survivor.$i.clean.fasta.fai"};
-        system("$absPath/samtools faidx $opts{p}.survivor.$i.clean.fasta");
-        delete $fnToBeUnlinkAtExit{"$opts{p}.survivor.$i.clean.fasta.fai"};
+        &Log("$absPath/samtools faidx $opts{p}.hap.$i.clean.fasta");
+        ++$fnToBeUnlinkAtExit{"$opts{p}.hap.$i.clean.fasta.fai"};
+        system("$absPath/samtools faidx $opts{p}.hap.$i.clean.fasta");
+        delete $fnToBeUnlinkAtExit{"$opts{p}.hap.$i.clean.fasta.fai"};
       }
       my @threadPool = ();
       for(my $i = 0; $i < $opts{d}; ++$i)
@@ -314,9 +349,9 @@ PARAMETER
       if(-e "$opts{p}.dwgsim.$i.12.fastq")
       { &Log("DWGSIM round $i done already"); return; }
       &Log("DWGSIM round $i thread $j start");
-      &Log("$absPath/dwgsim -N $readsPerHaplotype -e $opts{e} -E $opts{E} -d $opts{i} -s $opts{s} -1 $readLenghtWithoutBarcode -2 $readLenghtWithBarcode -H -y 0 -S 0 -c 0 -m /dev/null $opts{p}.survivor.$i.clean.fasta $opts{p}.dwgsim.$i.$j");
+      &Log("$absPath/dwgsim -N $readsPerHaplotype -e $opts{e} -E $opts{E} -d $opts{i} -s $opts{s} -1 $readLenghtWithoutBarcode -2 $readLenghtWithBarcode -H -y 0 -S 0 -c 0 -m /dev/null $opts{p}.hap.$i.clean.fasta $opts{p}.dwgsim.$i.$j");
       ++$fnToBeUnlinkAtExit{"$opts{p}.dwgsim.$i.$j.12.fastq"};
-      system("$absPath/dwgsim -N $readsPerHaplotype -e $opts{e} -E $opts{E} -d $opts{i} -s $opts{s} -1 $readLenghtWithoutBarcode -2 $readLenghtWithBarcode -H -y 0 -S 0 -c 0 -m /dev/null $opts{p}.survivor.$i.clean.fasta $opts{p}.dwgsim.$i.$j");
+      system("$absPath/dwgsim -N $readsPerHaplotype -e $opts{e} -E $opts{E} -d $opts{i} -s $opts{s} -1 $readLenghtWithoutBarcode -2 $readLenghtWithBarcode -H -y 0 -S 0 -c 0 -m /dev/null $opts{p}.hap.$i.clean.fasta $opts{p}.dwgsim.$i.$j");
       delete $fnToBeUnlinkAtExit{"$opts{p}.dwgsim.$i.$j.12.fastq"};
       if(!-s "$opts{p}.dwgsim.$i.$j.12.fastq")
       { &LogAndDie("DWGSIM round $i error on missing $opts{p}.dwgsim.$i.$j.12.fastq"); }
@@ -398,8 +433,8 @@ PARAMETER
       my @defaultBarcodeQualAry = split //, "AAAFFFKKKKKKKKKK";
       my %faidx = ();
       my @boundary = ();
-      my $genomeSize = &LoadFaidx(\%faidx, \@boundary, "$opts{p}.survivor.$i.clean.fasta");
-      &LogAndDie("Failed loading genome index $opts{p}.survivor.$i.clean.fasta.fai") if ($genomeSize == 0);
+      my $genomeSize = &LoadFaidx(\%faidx, \@boundary, "$opts{p}.hap.$i.clean.fasta");
+      &LogAndDie("Failed loading genome index $opts{p}.hap.$i.clean.fasta.fai") if ($genomeSize == 0);
       my $readPositionsInFile = mallocAry($genomeSize);
       initAryFF($readPositionsInFile, $genomeSize);
       if(-e "$opts{p}.$i.fp")
@@ -621,10 +656,11 @@ PARAMETER
 sub usage {
   my $opts = shift @_;
   die(qq/
-    Usage:   $0 -r <reference> -p <output prefix> [options]
+    Usage:   $0 -r\/-g <reference\/haplotypes> -p <output prefix> [options]
 
     Reference genome and variants:
     -d INT      Haplotypes to simulate [$$opts{d}]
+    -g STRING   Haploid FASTAs separated by comma. Overrides -r and -d.
     -1 INT      1 SNP per INT base pairs [$$opts{1}]
     -2 INT      Minimum length of Indels  [$$opts{2}]
     -3 INT      Maximum length of Indels  [$$opts{3}]
