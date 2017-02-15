@@ -65,11 +65,11 @@ END { if(not $amazingGrace) { foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") |
 
 sub main
 {
-  our %opts = (h=>undef, o=>undef, g=>undef, d=>2, r=>undef, p=>undef, b=>"$absPath/4M-with-alts-february-2016.txt", u=>99,
-               e=>"0.0001,0.0016", E=>"0.0001,0.0016", i=>350, s=>35, x=>600, f=>100, t=>1500, m=>10, z=>8,
+  our %opts = (h=>undef, o=>undef, g=>undef, d=>2, r=>undef, p=>undef, c=>undef, b=>"$absPath/4M-with-alts-february-2016.txt",
+               u=>99, e=>"0.0001,0.0016", E=>"0.0001,0.0016", i=>350, s=>35, x=>600, f=>100, t=>1500, m=>10, z=>8,
                1=>1000, 2=>1, 3=>50, 4=>1000, 5=>1000, 6=>10000, 7=>100, 8=>1000, 9=>10000, 0=>100);
   &usage(\%opts) if (@ARGV < 1);
-  getopts('hog:d:r:p:b:u:e:E:i:s:x:f:t:m:z:1:2:3:4:5:6:7:8:9:0:', \%opts);
+  getopts('hoc:g:d:r:p:b:u:e:E:i:s:x:f:t:m:z:1:2:3:4:5:6:7:8:9:0:', \%opts);
   &usage(\%opts) if (defined $opts{h});
 
   #Check options
@@ -98,6 +98,7 @@ sub main
   die "Output prefix (-p) cannot end with a /\n" if ($opts{p} =~ /\/$/);
   die "Please provide a barcodes file with -b\n" if (not defined $opts{b});
   die "Barcodes file $opts{b} not exist\n" if (!-s "$opts{b}");
+  die "Fragment sizes list $opts{c} not exist\n" if (defined $opts{c} && !-s "$opts{c}");
   die "Please provide a output prefix for this read simulation job with -p\n" if (not defined $opts{p});
   foreach(split /,/, $opts{e}) { die "The value of -e should be set between 0 and 1\n" if ( $_ < 0 || $_ > 1 ); }
   foreach(split /,/, $opts{E}) { die "The value of -E should be set between 0 and 1\n" if ( $_ < 0 || $_ > 1 ); }
@@ -416,6 +417,23 @@ PARAMETER
     # ? = 0.216x * 100k * 10 / 270
     # ? = 400
     #
+
+    our @fragmentSizesList = ();
+    our $sizesCount = 0;
+    if(defined $opts{c})
+    {
+      &Log("Using fragment sizes from $opts{c} instead of Poisson distribution");
+      open my $fh, "$opts{c}" or &LogAndDie("Fragment sizes list $opts{c} not exist");
+      @fragmentSizesList = <$fh>; chomp(@fragmentSizesList);
+      close $fh;
+      $sizesCount = scalar(@fragmentSizesList);
+      &Log("$sizesCount sizes loaded");
+      $opts{f} = 0;
+      foreach(@fragmentSizesList) { $opts{f} += $_ / $sizesCount; }
+      $opts{f} = int($opts{f} / 1000 + 0.4999);
+      &Log("Average fragment size: $opts{f}kbp");
+    }
+
     our $readsPerMolecule = int(0.499 + ($opts{x} * 1000 * 1000) / ($opts{t} * 1000 / $opts{d}) / $opts{m} / $opts{d});
     &Log("readPairsPerMolecule: $readsPerMolecule");
 
@@ -508,7 +526,7 @@ PARAMETER
           my $startingPosition = int(rand($genomeSize));
           #&Log("startingPosition: $startingPosition");
           #Pick a fragment size
-          my $moleculeSize  = &PoissonMoleculeSize($opts{f}*1000);
+          my $moleculeSize  = ($sizesCount == 0) ? (&PoissonMoleculeSize($opts{f}*1000)) : ($fragmentSizesList[rand($sizesCount)]);
           my $readsToExtract = int($readsPerMolecule * $moleculeSize / ($opts{f}*1000) + 0.4999);
           #&Log("readsToExtract: $readsToExtract");
 
@@ -682,6 +700,7 @@ sub usage {
     -b STRING   Barcodes list
     -x INT      # million reads pairs in total to simulated [$$opts{x}]
     -f INT      Mean molecule length in kbp [$$opts{f}]
+    -c STRING   Input a list of fragment sizes
     -t INT      n*1000 partitions to generate [$$opts{t}]
     -m INT      Average # of molecules per partition [$$opts{m}]
 
