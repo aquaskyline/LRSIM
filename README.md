@@ -14,15 +14,20 @@ sh test.sh
 
 ## Tips to run
 1. Please review the <a href="https://www.10xgenomics.com/">10X Genomics</a> website for an overivew of the sequencing process and the definitions of the related terms. Note that 'Molecule' and 'Partition' are synonymous to 'Fragment' and 'Pool'.
-2. The simulated reads were tested to be compaitible with "longRanger wgs" and "supernova".
-3. The default parameters are similar to 10X Chromium's standard protocal for human genome.
-4. Set -z to run DWGSIM in parallel. For the human genome, each copy of DWGSIM takes 4GB memory. Set -z to the number of available cores if you have enough memory.
-5. For the human genome, the memory consumption peaks at 48GB, and takes about 5 hours to finish with default parameters.
-6. With the same output prefix `-p`, you can continue from step 4: Simulate reads using option `-u 4` with different `-f` (fragment size), `-t` (partitions to generate) and `-m` (average number of molecules per partition). This shortern the simulation from 5 hours to 1.5 hours for human.
-7. Please use this pipeline for non-human genomes at your own risk. You may want to use `-o` to skip valid range check on parameters. You shouldn't set `-m` to over 4700, which is the number of available barcodes, or the program will not run to the end. Note that the default barcoding parameters do not perform well for small genomes (<100Mbp).
-8. I hate asking users to install dependencies, so they are included in the repo (make sure to use git clone --recursive). If you still run into problem, please write to me.
-9. To simulate reads using known variants, please provide LRSIM with variant inserted haploid FASTA files using `-g`, separated by comma. I suggest using <a href="http://alleleseq.gersteinlab.org/tools.html">vcf2diploid</a> to generate haploid FASTAs from VCF.
-10. User can provide ia real fragment size distribution using `-c`. A sample file is at `test/fragmentSizesList`.
+2. If you encounter the "Missing Inline::C library" error, please install the Inline::C perl library using CPAN or uncomment the following two lines of code by removing the hash symbol at the front.
+```
+#use lib "./lib";
+#use lib dirname($0)."/lib";
+```
+3. The simulated reads were tested to be compaitible with "longRanger wgs" and "supernova".
+4. The default parameters are similar to 10X Chromium's standard protocal for human genome.
+5. Set -z to run DWGSIM in parallel. For the human genome, each copy of DWGSIM takes 4GB memory. Set -z to the number of available cores if you have enough memory.
+6. For the human genome, the memory consumption peaks at 48GB, and takes about 5 hours to finish with default parameters.
+7. With the same output prefix `-p`, you can continue from step 4: Simulate reads using option `-u 4` with different `-f` (fragment size), `-t` (partitions to generate) and `-m` (average number of molecules per partition). This shortern the simulation from 5 hours to 1.5 hours for human.
+8. Please use this pipeline for non-human genomes at your own risk. You may want to use `-o` to skip valid range check on parameters. You shouldn't set `-m` to over 4700, which is the number of available barcodes, or the program will not run to the end. Note that the default barcoding parameters do not perform well for small genomes (<100Mbp).
+9. I hate asking users to install dependencies, so they are included in the repo (make sure to use git clone --recursive). If you still run into problem, please write to me.
+10. To simulate reads using known variants, please provide LRSIM with variant inserted haploid FASTA files using `-g`, separated by comma. I suggest using <a href="http://alleleseq.gersteinlab.org/tools.html">vcf2diploid</a> to generate haploid FASTAs from VCF.
+11. User can provide ia real fragment size distribution using `-c`. A sample file is at `test/fragmentSizesList`.
 
 
 ## Parameters
