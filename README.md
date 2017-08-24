@@ -8,7 +8,7 @@ This package simulates whole genome sequencing using 10X Genomics Linked Read te
 
 ```
 git clone --recursive https://github.com/aquaskyline/LRSIM.git
-cd 10xReadsSimulator
+cd LRSIM
 sh make.sh
 cd test
 sh test.sh
