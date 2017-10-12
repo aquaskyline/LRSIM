@@ -65,11 +65,11 @@ END { if(not $amazingGrace) { foreach(keys %fnToBeUnlinkAtExit) { unlink("$_") |
 
 sub main
 {
-  our %opts = (h=>undef, o=>undef, g=>undef, d=>2, r=>undef, p=>undef, c=>undef, b=>"$absPath/4M-with-alts-february-2016.txt",
+  our %opts = (h=>undef, o=>undef, g=>undef, n=>undef, d=>2, r=>undef, p=>undef, c=>undef, b=>"$absPath/4M-with-alts-february-2016.txt",
                u=>99, e=>"0.0001,0.0016", E=>"0.0001,0.0016", i=>350, s=>35, x=>600, f=>100, t=>1500, m=>10, z=>8,
                1=>1000, 2=>1, 3=>50, 4=>1000, 5=>1000, 6=>10000, 7=>100, 8=>1000, 9=>10000, 0=>100);
   &usage(\%opts) if (@ARGV < 1);
-  getopts('hoc:g:d:r:p:b:u:e:E:i:s:x:f:t:m:z:1:2:3:4:5:6:7:8:9:0:', \%opts);
+  getopts('hnoc:g:d:r:p:b:u:e:E:i:s:x:f:t:m:z:1:2:3:4:5:6:7:8:9:0:', \%opts);
   &usage(\%opts) if (defined $opts{h});
 
   #Check options
@@ -217,6 +217,9 @@ sub main
       ++$fnToBeUnlinkAtExit{"$opts{p}.hap.homAB.bed"};
       ++$fnToBeUnlinkAtExit{"$opts{p}.hap.parameter"};
       ++$survivorPostprocess;
+      if(defined $opts{n}) {
+        $opts{4} = $opts{7} = $opts{0} = 0;
+      }
       $opts{3}++ if $opts{3} == $opts{2};
       $opts{6}++ if $opts{6} == $opts{5};
       $opts{9}++ if $opts{9} == $opts{8};
@@ -689,6 +692,7 @@ sub usage {
     -8 INT      Minimum length of Translocations [$$opts{5}]
     -9 INT      Maximum length of Translocations [$$opts{6}]
     -0 INT      # of Translocations [$$opts{7}]
+    -n          Disable all SVs
 
     Illumina reads characteristics:
     -e FLOAT    Per base error rate of the first read [$$opts{e}]
