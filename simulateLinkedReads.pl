@@ -506,12 +506,18 @@ PARAMETER
         {
           my $idx = int(rand($numBarcodes));
           lock($barcodesMutexLock);
+          my $wentToZero = 0;
           while(1)
           {
             if($barcodes[$idx] eq "")
             {
               ++$idx;
-              $idx = 0 if $idx == $numBarcodes;
+              if($idx == $numBarcodes && not($wentToZero)) {
+                  $idx = 0;
+                  $wentToZero = 1;
+              } elsif($idx == $numBarcodes && $wentToZero) {
+                  &LogAndDie("Reached end of barcodes list. No more barcodes. Last read processed: $readsCountDown. Exiting.");
+              }
               next;
             }
             $selectedBarcode = $barcodes[$idx];
