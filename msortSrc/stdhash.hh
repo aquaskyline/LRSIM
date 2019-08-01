@@ -493,7 +493,7 @@ public:
 	inline bool insert(const keytype_t &key, const valtype_t &val) {
 		rehash();
 		hashint_t i;
-		int ret = direct_insert_aux(key, this->n_capacity, this->keys, this->flags, &i);
+		int ret = this->direct_insert_aux(key, this->n_capacity, this->keys, this->flags, &i);
 		vals[i] = val;
 		if (ret == 0) return true;
 		if (ret == 1) { ++(this->n_size); ++(this->n_occupied); }
