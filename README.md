@@ -1,3 +1,5 @@
+
+
 ## LRSIM: Simulator for Linked Reads
 
 [![DOI](https://zenodo.org/badge/74242108.svg)](https://zenodo.org/badge/latestdoi/74242108)
@@ -15,7 +17,7 @@ sh test.sh
 ```
 
 ## Tips to run
-1. Please review the <a href="https://www.10xgenomics.com/">10X Genomics</a> website for an overivew of the sequencing process and the definitions of the related terms. Note that 'Molecule' and 'Partition' are synonymous to 'Fragment' and 'Pool'.
+1. Please review the <a href="https://www.10xgenomics.com/">10X Genomics</a> website for an overview of the sequencing process and the definitions of the related terms. Note that 'Molecule' and 'Partition' are synonymous to 'Fragment' and 'Pool'.
 2. If you encounter the "Missing Inline::C library" error, please install the Inline::C perl library using CPAN or uncomment the following two lines of code by removing the hash symbol at the front.
 ```
 #use lib "./lib";
@@ -103,4 +105,3 @@ The simulator uses a modified version of DWGSIM originally developed by Nils Hom
   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
-
